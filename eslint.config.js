@@ -12,6 +12,20 @@ export default [
         ecmaVersion: 2022,
         sourceType: 'module',
       },
+      globals: {
+        // Browser globals
+        HTMLElement: 'readonly',
+        HTMLCanvasElement: 'readonly',
+        HTMLDivElement: 'readonly',
+        document: 'readonly',
+        window: 'readonly',
+        clearTimeout: 'readonly',
+        setTimeout: 'readonly',
+        URL: 'readonly',
+        console: 'readonly',
+        // pdf.js globals
+        pdfjs: 'readonly',
+      },
     },
     plugins: {
       '@typescript-eslint': typescriptEslint,
@@ -20,6 +34,7 @@ export default [
       ...typescriptEslint.configs.recommended.rules,
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/explicit-function-return-type': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
   {

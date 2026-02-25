@@ -5,7 +5,7 @@ import type { Highlight } from '../highlight/types';
 import { searchPages } from '../search/SearchEngine';
 import { computeHighlightRects } from '../highlight/HighlightEngine';
 import { HighlightLayer } from '../highlight/HighlightLayer';
-import { PageRenderer, type PageViewport } from './PageRenderer';
+import { PageRenderer } from './PageRenderer';
 
 export interface PdfViewerOptions {
   initialPage?: number;

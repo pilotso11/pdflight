@@ -1,5 +1,5 @@
 import type { PdflightTextItem, CharMapping, PageTextIndex } from '../types';
-import { normalizeQuotes, rejoinHyphens } from '../utils/text';
+import { normalizeQuotes } from '../utils/text';
 
 /**
  * Build a PageTextIndex from an array of PdflightTextItems.

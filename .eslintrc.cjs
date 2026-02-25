@@ -10,8 +10,16 @@ module.exports = {
     ecmaVersion: 2022,
     sourceType: 'module',
   },
+  env: {
+    browser: true,
+  },
+  globals: {
+    // pdf.js globals
+    pdfjs: 'readonly',
+  },
   rules: {
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     '@typescript-eslint/explicit-function-return-type': 'off',
+    '@typescript-eslint/no-explicit-any': 'off',
   },
 };

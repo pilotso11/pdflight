@@ -1,4 +1,4 @@
-import type { PageTextIndex, CharMapping } from '../types';
+import type { PageTextIndex } from '../types';
 import type { Highlight, HighlightRect } from './types';
 import { rectFromTransform, pdfRectToCssRect, mergeAdjacentRects, sliceRectHorizontal } from '../utils/geometry';
 

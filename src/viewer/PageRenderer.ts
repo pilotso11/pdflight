@@ -135,7 +135,7 @@ export class PageRenderer {
         await textLayer.render();
         return;
       }
-    } catch (e) {
+    } catch {
       // Fall through to simple text rendering
     }
 
