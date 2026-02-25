@@ -1,0 +1,9 @@
+node_modules/
+dist/
+dist-demo/
+*.log
+.DS_Store
+bun.lockb
+coverage/
+test-results/
+playwright-report/

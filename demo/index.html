@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>pdflight Demo</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header class="toolbar">
+      <h1>pdflight Demo</h1>
+      <div class="toolbar-section">
+        <label for="file-input" class="btn">Open PDF</label>
+        <input type="file" id="file-input" accept=".pdf" data-testid="file-input">
+        <select id="demo-pdf" data-testid="demo-pdf-select">
+          <option value="">Load demo PDF...</option>
+          <option value="file-sample_150kB.pdf">Sample 150KB</option>
+          <option value="pdf-sample2.pdf">Sample 2</option>
+        </select>
+      </div>
+      <div class="toolbar-section">
+        <input type="text" id="search-input" placeholder="Search..." data-testid="search-input">
+        <button id="search-btn" data-testid="search-btn">Search</button>
+        <span id="search-results" data-testid="search-results"></span>
+      </div>
+      <div class="toolbar-section">
+        <button id="zoom-out" data-testid="zoom-out">−</button>
+        <span id="zoom-level" data-testid="zoom-level">100%</span>
+        <button id="zoom-in" data-testid="zoom-in">+</button>
+        <select id="fit-mode" data-testid="fit-mode">
+          <option value="width">Fit Width</option>
+          <option value="page">Fit Page</option>
+          <option value="none">None</option>
+        </select>
+      </div>
+      <div class="toolbar-section">
+        <label><input type="checkbox" id="sidebar-toggle" data-testid="sidebar-toggle"> Sidebar</label>
+        <label><input type="checkbox" id="stepper-toggle" data-testid="stepper-toggle"> Stepper</label>
+      </div>
+    </header>
+
+    <div id="viewer-container" class="viewer-container">
+      <aside id="sidebar" class="sidebar hidden" data-testid="sidebar">
+        <h2>Thumbnails</h2>
+        <div id="thumbnails" data-testid="thumbnails"></div>
+      </aside>
+
+      <main id="pdf-viewer" class="pdf-viewer" data-testid="pdf-viewer"></main>
+    </div>
+
+    <footer id="controls-panel" class="controls-panel">
+      <div class="control-section">
+        <h3>Highlights</h3>
+        <button id="highlight-all" data-testid="highlight-all">Highlight All Search Results</button>
+        <button id="clear-highlights" data-testid="clear-highlights">Clear All</button>
+        <input type="color" id="highlight-color" value="#ffff00" data-testid="highlight-color">
+      </div>
+      <div class="control-section">
+        <h3>Navigation</h3>
+        <div id="page-stepper" class="page-stepper hidden" data-testid="page-stepper">
+          <button id="prev-page" data-testid="prev-page">◀ Prev</button>
+          <span id="page-info" data-testid="page-info">Page 1 of 1</span>
+          <button id="next-page" data-testid="next-page">Next ▶</button>
+        </div>
+      </div>
+      <div class="control-section">
+        <h3>Serialize</h3>
+        <button id="export-json" data-testid="export-json">Export JSON</button>
+        <button id="import-json" data-testid="import-json">Import JSON</button>
+        <textarea id="json-io" data-testid="json-io" readonly></textarea>
+      </div>
+    </footer>
+  </div>
+
+  <script type="module" src="./app.ts"></script>
+</body>
+</html>
