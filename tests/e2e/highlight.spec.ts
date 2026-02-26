@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Highlights', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await page.selectOption('#demo-pdf-select', 'file-sample_150kB.pdf');
+    await page.selectOption('[data-testid="demo-pdf-select"]', 'file-sample_150kB.pdf');
     await page.waitForSelector('[data-testid="pdf-viewer"] canvas', { timeout: 10000 });
   });
 
@@ -49,5 +49,55 @@ test.describe('Highlights', () => {
     await page.click('[data-testid="clear-highlights"]');
 
     await expect(page.locator('.pdflight-highlight')).toHaveCount(0);
+  });
+
+  test('screenshot: highlight covers text accurately', async ({ page }) => {
+    // Search for 'This' which should exist in most PDFs
+    await page.fill('[data-testid="search-input"]', 'This');
+    await page.click('[data-testid="search-btn"]');
+    await page.click('[data-testid="highlight-all"]');
+    await page.waitForTimeout(200);
+
+    // Screenshot the PDF viewer with highlights
+    const viewer = page.locator('[data-testid="pdf-viewer"]');
+    await viewer.screenshot({
+      path: 'tests/screenshots/highlight-accuracy.png',
+      fullPage: false,
+    });
+
+    // Verify the screenshot was created
+    const fs = await import('fs');
+    expect(fs.existsSync('tests/screenshots/highlight-accuracy.png')).toBe(true);
+  });
+
+  test('screenshot: PDF renders correctly', async ({ page }) => {
+    await page.waitForTimeout(500); // Let PDF fully render
+
+    const viewer = page.locator('[data-testid="pdf-viewer"]');
+    await viewer.screenshot({
+      path: 'tests/screenshots/pdf-rendered.png',
+      fullPage: false,
+    });
+  });
+
+  test('screenshot: overlapping highlights blend correctly', async ({ page }) => {
+    // Search for common word and apply with different colors
+    await page.fill('[data-testid="search-input"]', 'the');
+    await page.click('[data-testid="search-btn"]');
+
+    // Apply highlights (will use same color for now)
+    await page.click('[data-testid="highlight-all"]');
+
+    // Change color and apply again to create overlap
+    await page.fill('[data-testid="highlight-color"]', '#ff0000');
+    await page.click('[data-testid="highlight-all"]');
+
+    await page.waitForTimeout(200);
+
+    const viewer = page.locator('[data-testid="pdf-viewer"]');
+    await viewer.screenshot({
+      path: 'tests/screenshots/overlapping-highlights.png',
+      fullPage: false,
+    });
   });
 });

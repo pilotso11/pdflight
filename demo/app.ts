@@ -34,9 +34,13 @@ let currentHighlightColor = '#ffff0080'; // 50% opacity yellow
 
 // Initialize
 function init() {
+  console.log('[Demo App] init() called');
+  console.log('[Demo App] pdfViewerContainer:', pdfViewerContainer);
+
   viewer = new PdfViewer(pdfViewerContainer, {
     tooltipContent: (h: Highlight) => `Highlight: ${h.id}`,
   });
+  console.log('[Demo App] PdfViewer created:', viewer);
 
   // File input
   const openBtn = document.querySelector('.btn');
@@ -125,8 +129,11 @@ async function handleFileSelect(e: Event) {
 
 async function handleDemoPdfSelect(e: Event) {
   const value = (e.target as HTMLSelectElement).value;
+  console.log('[Demo App] handleDemoPdfSelect called with value:', value);
   if (value && viewer) {
+    console.log('[Demo App] Loading PDF...');
     await viewer.load(`/tests/fixtures/${value}`);
+    console.log('[Demo App] PDF loaded');
     updatePageInfo();
   }
 }
@@ -161,3 +168,12 @@ function updatePageInfo() {
 
 // Start
 init();
+
+// Expose for debugging
+(window as any).viewer = viewer;
+console.log('[Demo App] Initialized. Viewer:', viewer);
+
+// Listen for unhandled rejections
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('[Demo App] Unhandled rejection:', event.reason);
+});

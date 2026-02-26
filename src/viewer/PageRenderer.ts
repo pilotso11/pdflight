@@ -55,9 +55,12 @@ export class PageRenderer {
 
   /** Render the page to a container. */
   async render(container: HTMLElement, pdfDocument: pdfjs.PDFDocumentProxy): Promise<void> {
+    console.log('[PageRenderer] render starting for page', this.pageNumber);
     this.container = container;
     this.pdfPage = await pdfDocument.getPage(this.pageNumber);
+    console.log('[PageRenderer] Got PDF page');
     const viewport = this.pdfPage.getViewport({ scale: this.currentScale });
+    console.log('[PageRenderer] Got viewport:', viewport.width, 'x', viewport.height);
 
     // Update pageViewport with actual dimensions
     this.pageViewport = {
@@ -68,6 +71,7 @@ export class PageRenderer {
     };
 
     // Create canvas
+    console.log('[PageRenderer] Creating canvas');
     this.canvas = document.createElement('canvas');
     this.canvas.className = 'pdflight-canvas';
     this.canvas.width = viewport.width;
@@ -89,20 +93,31 @@ export class PageRenderer {
     `;
 
     // Render PDF to canvas
+    console.log('[PageRenderer] Getting 2D context');
+    const context = this.canvas.getContext('2d');
+    if (!context) {
+      console.error('[PageRenderer] Failed to get 2D context!');
+      return;
+    }
     const renderContext = {
-      canvasContext: this.canvas.getContext('2d')!,
+      canvasContext: context,
       viewport,
     } as any; // Using any due to pdf.js type definitions
+    console.log('[PageRenderer] Starting PDF render to canvas');
     await this.pdfPage.render(renderContext).promise;
+    console.log('[PageRenderer] PDF render to canvas completed');
 
     // Render text layer
+    console.log('[PageRenderer] Getting text content');
     const textContent = await this.pdfPage.getTextContent() as any;
+    console.log('[PageRenderer] Got text content, items:', textContent.items.length);
     await this.renderTextLayer(textContent, viewport);
 
     // Build text index
     this.textIndex = await this.buildTextIndex(textContent);
 
     // Assemble the page container
+    console.log('[PageRenderer] Assembling page container');
     const pageContainer = document.createElement('div');
     pageContainer.className = 'pdflight-page-container';
     pageContainer.style.cssText = `
@@ -115,7 +130,9 @@ export class PageRenderer {
     pageContainer.appendChild(this.canvas);
     pageContainer.appendChild(this.textLayerDiv);
 
+    console.log('[PageRenderer] Appending page container to DOM');
     container.appendChild(pageContainer);
+    console.log('[PageRenderer] render completed');
   }
 
   private async renderTextLayer(textContent: any, viewport: any): Promise<void> {

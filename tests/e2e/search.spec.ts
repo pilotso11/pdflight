@@ -4,7 +4,7 @@ test.describe('Search', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     // Load a demo PDF
-    await page.selectOption('#demo-pdf-select', 'file-sample_150kB.pdf');
+    await page.selectOption('[data-testid="demo-pdf-select"]', 'file-sample_150kB.pdf');
     await page.waitForSelector('[data-testid="pdf-viewer"] canvas', { timeout: 10000 });
   });
 

@@ -59,17 +59,33 @@ export class PdfViewer {
 
   /** Load a PDF from URL or binary data. */
   async load(source: string | ArrayBuffer | Uint8Array): Promise<void> {
-    let loadingTask: pdfjs.PDFDocumentLoadingTask;
+    console.log('[PdfViewer] load() called with source:', typeof source);
+    try {
+      let loadingTask: pdfjs.PDFDocumentLoadingTask;
 
-    if (typeof source === 'string') {
-      loadingTask = pdfjs.getDocument(source);
-    } else {
-      loadingTask = pdfjs.getDocument({ data: source });
+      if (typeof source === 'string') {
+        console.log('[PdfViewer] Loading from URL:', source);
+        loadingTask = pdfjs.getDocument(source);
+      } else {
+        console.log('[PdfViewer] Loading from data');
+        loadingTask = pdfjs.getDocument({ data: source });
+      }
+
+      loadingTask.promise.then(
+        (doc) => console.log('[PdfViewer] Loading task promise resolved'),
+        (err) => console.error('[PdfViewer] Loading task promise rejected:', err)
+      );
+
+      this.pdfDocument = await loadingTask.promise;
+      console.log('[PdfViewer] PDF loaded, pages:', this.pdfDocument.numPages);
+      this.currentPage = this.options.initialPage;
+      console.log('[PdfViewer] Calling renderCurrentPage for page:', this.currentPage);
+      await this.renderCurrentPage();
+      console.log('[PdfViewer] renderCurrentPage completed');
+    } catch (error) {
+      console.error('[PdfViewer] Error in load():', error);
+      throw error;
     }
-
-    this.pdfDocument = await loadingTask.promise;
-    this.currentPage = this.options.initialPage;
-    await this.renderCurrentPage();
   }
 
   /** Navigate to a specific page. */
@@ -193,17 +209,21 @@ export class PdfViewer {
   private async renderCurrentPage(): Promise<void> {
     if (!this.pdfDocument) return;
 
+    console.log('[PdfViewer] renderCurrentPage: clearing container');
     // Clear container
     this.container.textContent = '';
     this.highlightLayer.mount(this.container);
 
+    console.log('[PdfViewer] Creating PageRenderer');
     const renderer = new PageRenderer(this.currentPage, {
       pageNumber: this.currentPage,
       width: 0,
       height: 0,
       scale: this.currentZoom,
     });
+    console.log('[PdfViewer] Calling renderer.render');
     await renderer.render(this.container, this.pdfDocument);
+    console.log('[PdfViewer] renderer.render completed');
     this.pageRenderers.set(this.currentPage, renderer);
 
     // Cache text index
