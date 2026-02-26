@@ -49,6 +49,13 @@ export class PageRenderer {
     return this.pageContainer;
   }
 
+  /** Get the unscaled PDF page height (in PDF points, not CSS pixels). */
+  getPdfPageHeight(): number {
+    if (!this.pdfPage) return 0;
+    const unscaledViewport = this.pdfPage.getViewport({ scale: 1 });
+    return unscaledViewport.height;
+  }
+
   /** Get the PDF page proxy. */
   getPdfPage(): pdfjs.PDFPageProxy | null {
     return this.pdfPage;

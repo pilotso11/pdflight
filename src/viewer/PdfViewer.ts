@@ -277,11 +277,15 @@ export class PdfViewer {
       if (highlight.page === this.currentPage) {
         const textIndex = this.textIndices.get(this.currentPage);
         if (textIndex) {
-          // Get page viewport dimensions from renderer
+          // Get page renderer for accessing PDF page
           const renderer = this.pageRenderers.get(this.currentPage);
           const viewport = renderer?.getViewport();
-          const pageHeight = viewport?.height ?? 792;
-          const rects = computeHighlightRects(textIndex, highlight, pageHeight, this.currentZoom);
+
+          // Use unscaled PDF page height (not the scaled viewport height)
+          // This is critical for correct highlight positioning at different zoom levels
+          const pdfPageHeight = renderer?.getPdfPageHeight() ?? viewport?.height ?? 792;
+
+          const rects = computeHighlightRects(textIndex, highlight, pdfPageHeight, this.currentZoom);
           pageHighlights.push({ highlight, rects });
         }
       }
