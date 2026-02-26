@@ -1,10 +1,11 @@
 import { defineConfig } from 'vite';
+import { resolve } from 'path';
 
 export default defineConfig({
   root: 'demo',
   resolve: {
     alias: {
-      '../src': new URL('./src', import.meta.url).pathname,
+      '../src': resolve(__dirname, './src'),
     },
   },
   build: {
@@ -13,5 +14,10 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // Allow serving test fixtures from outside the root
+    fs: {
+      strict: false,
+      allow: ['..'],
+    },
   },
 });

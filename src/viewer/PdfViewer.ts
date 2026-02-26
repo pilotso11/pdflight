@@ -39,6 +39,10 @@ export class PdfViewer {
   private eventListeners = new Map<EventType, Set<EventListener>>();
 
   constructor(container: HTMLElement, options: PdfViewerOptions = {}) {
+    // Configure pdf.js worker (must be done before loading PDFs)
+    const workerUrl = new URL('pdfjs-dist/build/pdf.worker.mjs', import.meta.url).toString();
+    pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+
     this.container = container;
     this.options = {
       initialPage: options.initialPage ?? 1,

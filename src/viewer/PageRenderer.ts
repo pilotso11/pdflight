@@ -1,11 +1,6 @@
 import * as pdfjs from 'pdfjs-dist';
 import type { PageTextIndex, PdflightTextItem } from '../types';
 
-// Set worker source for pdf.js (browser only)
-if (typeof window !== 'undefined') {
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.mjs', import.meta.url).toString();
-}
-
 export interface PageViewport {
   pageNumber: number;
   width: number;

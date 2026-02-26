@@ -8,6 +8,16 @@ test.describe('Simple PDF Load', () => {
       logs.push(`[${msg.type()}] ${msg.text()}`);
     });
 
+    // Monitor all network requests
+    const allRequests: string[] = [];
+    const failedRequests: string[] = [];
+    page.on('request', request => {
+      allRequests.push(request.url());
+    });
+    page.on('requestfailed', request => {
+      failedRequests.push(`${request.url()} - ${request.failure()?.errorText || 'unknown'}`);
+    });
+
     await page.goto('/');
 
     // Select a PDF
@@ -24,6 +34,10 @@ test.describe('Simple PDF Load', () => {
     const childCount = await page.locator('[data-testid="pdf-viewer"] > *').count();
     console.log('Direct child count:', childCount);
 
+    // Check for debug div
+    const debugDiv = await page.locator('#pdfviewer-constructor-debug').count();
+    console.log('Debug div count:', debugDiv);
+
     // Look for canvas elements anywhere in viewer
     const canvasCount = await page.locator('[data-testid="pdf-viewer"] canvas').count();
     console.log('Canvas count:', canvasCount);
@@ -37,6 +51,14 @@ test.describe('Simple PDF Load', () => {
 
     // Print console logs
     console.log('Console logs:', logs.slice(0, 20).join('\n'));
+
+    // Print all network requests
+    console.log('All network requests:', allRequests.slice(0, 30).join('\n'));
+
+    // Print failed requests
+    if (failedRequests.length > 0) {
+      console.log('Failed requests:', failedRequests.join('\n'));
+    }
 
     // The PDF should have rendered something
     expect(childCount + canvasCount + divCount).toBeGreaterThan(0);

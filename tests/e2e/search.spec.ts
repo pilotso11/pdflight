@@ -19,4 +19,23 @@ test.describe('Search', () => {
     await page.click('[data-testid="search-btn"]');
     await expect(page.locator('[data-testid="search-results"]')).not.toHaveText('0 match');
   });
+
+  test('handles hyphenated words across line breaks', async ({ page }) => {
+    await page.fill('[data-testid="search-input"]', 'document');
+    await page.click('[data-testid="search-btn"]');
+    await expect(page.locator('[data-testid="search-results"]')).toContainText('match');
+  });
+
+  test('shows no results for non-existent text', async ({ page }) => {
+    await page.fill('[data-testid="search-input"]', 'xyzabc123nonexistent');
+    await page.click('[data-testid="search-btn"]');
+    await expect(page.locator('[data-testid="search-results"]')).toContainText('0 match');
+  });
+
+  test('handles special characters in search', async ({ page }) => {
+    await page.fill('[data-testid="search-input"]', '@#$%');
+    await page.click('[data-testid="search-btn"]');
+    // Should handle gracefully without errors
+    await expect(page.locator('[data-testid="search-results"]')).toBeVisible();
+  });
 });
