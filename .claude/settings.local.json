@@ -19,7 +19,12 @@
       "Bash(npx playwright test tests/e2e/search.spec.ts --reporter=list)",
       "Bash(npx playwright test tests/e2e/navigation.spec.ts --reporter=list)",
       "Bash(npx playwright test tests/e2e/stepper.spec.ts --reporter=list)",
-      "Bash(npx playwright test tests/e2e/sidebar.spec.ts --reporter=list)"
+      "Bash(npx playwright test tests/e2e/sidebar.spec.ts --reporter=list)",
+      "Bash(npx playwright test tests/e2e/highlight.spec.ts --reporter=list)",
+      "Bash(npx playwright test tests/e2e/serialization.spec.ts --reporter=list)",
+      "Bash(npx playwright test tests/e2e/file-loading.spec.ts --reporter=list)",
+      "Bash(npx playwright test --reporter=list 2>&1 | tail -50)",
+      "Bash(npx playwright test --reporter=list 2>&1 | grep -E \"\\(passed|failed\\)\" | tail -5)"
     ]
   }
 }
