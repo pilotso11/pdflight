@@ -15,7 +15,11 @@
       "Bash(which npm && npm --version)",
       "Bash(pkill -f vite; sleep 2; npm run dev)",
       "Bash(npx playwright test tests/e2e/simple.spec.ts 2>&1 | grep -E \"\\(CONSTRUCTOR|worker configured|Debug div|Canvas\\)\" | head -10)",
-      "Bash(npx playwright test tests/e2e/simple.spec.ts --reporter=list)"
+      "Bash(npx playwright test tests/e2e/simple.spec.ts --reporter=list)",
+      "Bash(npx playwright test tests/e2e/search.spec.ts --reporter=list)",
+      "Bash(npx playwright test tests/e2e/navigation.spec.ts --reporter=list)",
+      "Bash(npx playwright test tests/e2e/stepper.spec.ts --reporter=list)",
+      "Bash(npx playwright test tests/e2e/sidebar.spec.ts --reporter=list)"
     ]
   }
 }

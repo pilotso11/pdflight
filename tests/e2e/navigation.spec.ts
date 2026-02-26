@@ -25,4 +25,43 @@ test.describe('Navigation', () => {
     await page.check('[data-testid="stepper-toggle"]');
     await expect(page.locator('[data-testid="page-stepper"]')).toBeVisible();
   });
+
+  test('pans document by dragging', async ({ page }) => {
+    const viewer = page.locator('[data-testid="pdf-viewer"]');
+    const canvas = viewer.locator('canvas').first();
+
+    // Get initial scroll position
+    const initialScrollX = await viewer.evaluate(el => el.scrollLeft);
+    const initialScrollY = await viewer.evaluate(el => el.scrollTop);
+
+    // Drag to pan
+    await canvas.hover();
+    await page.mouse.down();
+    await page.mouse.move(100, 100);
+    await page.mouse.up();
+
+    // Verify scroll position changed
+    const finalScrollX = await viewer.evaluate(el => el.scrollLeft);
+    const finalScrollY = await viewer.evaluate(el => el.scrollTop);
+
+    expect(Math.abs(finalScrollX - initialScrollX) + Math.abs(finalScrollY - initialScrollY)).toBeGreaterThan(0);
+  });
+
+  test('switches to fit-to-width mode', async ({ page }) => {
+    // Verify fit mode selector works (feature is placeholder but UI should respond)
+    await page.selectOption('[data-testid="fit-mode"]', 'width');
+
+    // Verify selection was applied
+    const selectedValue = await page.locator('[data-testid="fit-mode"]').inputValue();
+    expect(selectedValue).toBe('width');
+  });
+
+  test('switches to fit-to-page mode', async ({ page }) => {
+    // Verify fit mode selector works (feature is placeholder but UI should respond)
+    await page.selectOption('[data-testid="fit-mode"]', 'page');
+
+    // Verify selection was applied
+    const selectedValue = await page.locator('[data-testid="fit-mode"]').inputValue();
+    expect(selectedValue).toBe('page');
+  });
 });
