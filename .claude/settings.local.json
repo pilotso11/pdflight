@@ -24,7 +24,8 @@
       "Bash(npx playwright test tests/e2e/serialization.spec.ts --reporter=list)",
       "Bash(npx playwright test tests/e2e/file-loading.spec.ts --reporter=list)",
       "Bash(npx playwright test --reporter=list 2>&1 | tail -50)",
-      "Bash(npx playwright test --reporter=list 2>&1 | grep -E \"\\(passed|failed\\)\" | tail -5)"
+      "Bash(npx playwright test --reporter=list 2>&1 | grep -E \"\\(passed|failed\\)\" | tail -5)",
+      "Bash(echo \"Screenshot files:\" && ls -1 tests/screenshots/*.png | while read f; do echo \"  - $f\"; done)"
     ]
   }
 }

@@ -13,6 +13,7 @@ export interface PageViewport {
  */
 export class PageRenderer {
   private container: HTMLElement | null = null;
+  private pageContainer: HTMLElement | null = null;
   private canvas: HTMLCanvasElement | null = null;
   private textLayerDiv: HTMLDivElement | null = null;
   private pdfPage: pdfjs.PDFPageProxy | null = null;
@@ -41,6 +42,11 @@ export class PageRenderer {
   /** Get the text index for this page (built during first render). */
   getTextIndex(): PageTextIndex | null {
     return this.textIndex;
+  }
+
+  /** Get the page container element (for mounting highlight layer). */
+  getPageContainer(): HTMLElement | null {
+    return this.pageContainer;
   }
 
   /** Get the PDF page proxy. */
@@ -113,20 +119,20 @@ export class PageRenderer {
 
     // Assemble the page container
     console.log('[PageRenderer] Assembling page container');
-    const pageContainer = document.createElement('div');
-    pageContainer.className = 'pdflight-page-container';
-    pageContainer.style.cssText = `
+    this.pageContainer = document.createElement('div');
+    this.pageContainer.className = 'pdflight-page-container';
+    this.pageContainer.style.cssText = `
       position: relative;
       width: ${viewport.width}px;
       height: ${viewport.height}px;
       margin: 20px auto;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     `;
-    pageContainer.appendChild(this.canvas);
-    pageContainer.appendChild(this.textLayerDiv);
+    this.pageContainer.appendChild(this.canvas);
+    this.pageContainer.appendChild(this.textLayerDiv);
 
     console.log('[PageRenderer] Appending page container to DOM');
-    container.appendChild(pageContainer);
+    container.appendChild(this.pageContainer);
     console.log('[PageRenderer] render completed');
   }
 

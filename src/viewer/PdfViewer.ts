@@ -216,7 +216,6 @@ export class PdfViewer {
     console.log('[PdfViewer] renderCurrentPage: clearing container');
     // Clear container
     this.container.textContent = '';
-    this.highlightLayer.mount(this.container);
 
     console.log('[PdfViewer] Creating PageRenderer');
     const renderer = new PageRenderer(this.currentPage, {
@@ -229,6 +228,13 @@ export class PdfViewer {
     await renderer.render(this.container, this.pdfDocument);
     console.log('[PdfViewer] renderer.render completed');
     this.pageRenderers.set(this.currentPage, renderer);
+
+    // Mount highlight layer to the page container (not main container)
+    // This ensures highlights are positioned relative to the actual PDF page
+    const pageContainer = renderer.getPageContainer();
+    if (pageContainer) {
+      this.highlightLayer.mount(pageContainer);
+    }
 
     // Cache text index
     const textIndex = renderer.getTextIndex();
