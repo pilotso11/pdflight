@@ -51,7 +51,26 @@ export function computeHighlightRects(
   }
 
   // Merge adjacent rects on the same line (within 2px tolerance)
-  return mergeAdjacentRects(rects, 2 * scale);
+  const merged = mergeAdjacentRects(rects, 2 * scale);
+
+  // Add buffer/padding around each rect (1/2 character height in each dimension)
+  return addBufferToRects(merged, scale);
+}
+
+/**
+ * Add buffer/padding around highlight rects for better visual appearance.
+ * Buffer is 0.5 * character height, scaled appropriately.
+ */
+function addBufferToRects(rects: HighlightRect[], scale: number): HighlightRect[] {
+  const buffer = 0.5 * 12 * scale; // ~0.5 char height (assuming 12pt font)
+
+  return rects.map(rect => ({
+    ...rect,
+    x: Math.max(0, rect.x - buffer),
+    y: Math.max(0, rect.y - buffer),
+    width: rect.width + (buffer * 2),
+    height: rect.height + (buffer * 2),
+  }));
 }
 
 function mapCharRangeToItems(
