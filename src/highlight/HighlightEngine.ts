@@ -43,26 +43,36 @@ export function computeHighlightRects(
       rects.push(cssRect);
     } else {
       // Partial item highlight — use charWidths for precision
-      const startFraction = sumWidths(item.charWidths, 0, range.startOffset) / sumWidths(item.charWidths);
-      const endFraction = sumWidths(item.charWidths, 0, range.endOffset) / sumWidths(item.charWidths);
-      const partialRect = sliceRectHorizontal(cssRect, startFraction, endFraction);
-      rects.push(partialRect);
+      const totalWidth = sumWidths(item.charWidths);
+
+      // Fallback if charWidths is empty or zero (some PDFs don't provide this data)
+      if (totalWidth === 0 || !item.charWidths || item.charWidths.length === 0) {
+        // Use uniform character spacing as fallback
+        const charCount = item.str.length;
+        const startFraction = range.startOffset / charCount;
+        const endFraction = range.endOffset / charCount;
+        const partialRect = sliceRectHorizontal(cssRect, startFraction, endFraction);
+        rects.push(partialRect);
+      } else {
+        const startFraction = sumWidths(item.charWidths, 0, range.startOffset) / totalWidth;
+        const endFraction = sumWidths(item.charWidths, 0, range.endOffset) / totalWidth;
+        const partialRect = sliceRectHorizontal(cssRect, startFraction, endFraction);
+        rects.push(partialRect);
+      }
     }
   }
 
   // Merge adjacent rects on the same line (within 2px tolerance)
-  const merged = mergeAdjacentRects(rects, 2 * scale);
-
-  // Add buffer/padding around each rect (1/2 character height in each dimension)
-  return addBufferToRects(merged, scale);
+  return mergeAdjacentRects(rects, 2 * scale);
 }
 
 /**
  * Add buffer/padding around highlight rects for better visual appearance.
- * Buffer is 0.5 * character height, scaled appropriately.
+ * Buffer is proportional to scale but kept small to avoid overlapping adjacent text.
  */
 function addBufferToRects(rects: HighlightRect[], scale: number): HighlightRect[] {
-  const buffer = 0.5 * 12 * scale; // ~0.5 char height (assuming 12pt font)
+  // Use smaller buffer: 2px scaled (approximately 0.15-0.2 char height)
+  const buffer = Math.max(1, 2 * scale);
 
   return rects.map(rect => ({
     ...rect,
