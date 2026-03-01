@@ -1,6 +1,6 @@
 {
   "name": "@pilotso11/pdflight",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "description": "PDF viewer with precise text highlighting and smart search",
   "main": "./dist/pdflight.js",
