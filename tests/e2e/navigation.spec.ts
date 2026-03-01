@@ -8,7 +8,7 @@ test.describe('Navigation', () => {
   });
 
   test('zooms in and out', async ({ page }) => {
-    const initialZoom = await page.locator('.pdflight-toolbar-zoom-level').textContent();
+    await page.locator('.pdflight-toolbar-zoom-level').textContent();
     await page.click('.pdflight-toolbar-btn[title="Zoom in"]');
     await page.waitForTimeout(200);
     const zoomedIn = await page.locator('.pdflight-toolbar-zoom-level').textContent();
