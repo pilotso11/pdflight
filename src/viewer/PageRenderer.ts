@@ -20,14 +20,17 @@ export class PageRenderer {
   private pdfPage: pdfjs.PDFPageProxy | null = null;
   private textIndex: PageTextIndex | null = null;
   private currentScale = 1.0;
+  private rotation = 0;
   private pageViewport: PageViewport;
 
   constructor(
     private pageNumber: number,
     viewport: PageViewport,
+    rotation = 0,
   ) {
     this.pageViewport = viewport;
     this.currentScale = viewport.scale;
+    this.rotation = rotation;
   }
 
   /** Get the page viewport. */
@@ -53,7 +56,7 @@ export class PageRenderer {
   /** Get the unscaled PDF page height (in PDF points, not CSS pixels). */
   getPdfPageHeight(): number {
     if (!this.pdfPage) return 0;
-    const unscaledViewport = this.pdfPage.getViewport({ scale: 1 });
+    const unscaledViewport = this.pdfPage.getViewport({ scale: 1, rotation: this.rotation });
     return unscaledViewport.height;
   }
 
@@ -68,7 +71,7 @@ export class PageRenderer {
     this.container = container;
     this.pdfPage = await pdfDocument.getPage(this.pageNumber);
     console.log('[PageRenderer] Got PDF page');
-    const viewport = this.pdfPage.getViewport({ scale: this.currentScale });
+    const viewport = this.pdfPage.getViewport({ scale: this.currentScale, rotation: this.rotation });
     console.log('[PageRenderer] Got viewport:', viewport.width, 'x', viewport.height);
 
     // Update pageViewport with actual dimensions
