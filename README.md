@@ -11,10 +11,16 @@ PDF viewer library with precise text highlighting and smart search.
 - **Framework-agnostic** — vanilla TypeScript, works with any framework
 - **Bundled pdf.js** — includes pdf.js as a direct dependency, no peer deps
 
+## Install
+
+```bash
+npm install @pilotso11/pdflight
+```
+
 ## Quick Start
 
 ```typescript
-import { PdfViewer } from 'pdflight';
+import { PdfViewer } from '@pilotso11/pdflight';
 
 const viewer = new PdfViewer(containerElement);
 await viewer.load('/path/to/document.pdf');
