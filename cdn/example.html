@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>pdflight CDN Example</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 20px; }
+    h1 { margin-bottom: 12px; }
+    .controls { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; flex-wrap: wrap; }
+    .controls input[type="text"] { padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; }
+    .controls button {
+      padding: 6px 12px; background: #007bff; color: white;
+      border: none; border-radius: 4px; cursor: pointer;
+    }
+    .controls button:hover { background: #0056b3; }
+    #viewer {
+      width: 100%; height: 70vh; border: 1px solid #ddd; border-radius: 4px;
+      overflow: auto; background: #525659;
+    }
+    .usage { margin-top: 20px; padding: 16px; background: #f5f5f5; border-radius: 4px; }
+    .usage h2 { margin-bottom: 8px; font-size: 16px; }
+    .usage pre { background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 13px; }
+    .usage code { font-family: 'SF Mono', Menlo, monospace; }
+  </style>
+</head>
+<body>
+  <h1>pdflight CDN Example</h1>
+
+  <div class="controls">
+    <input type="file" id="file-input" accept=".pdf">
+    <input type="text" id="search-input" placeholder="Search...">
+    <button id="search-btn">Search</button>
+    <button id="highlight-btn">Highlight Results</button>
+    <button id="clear-btn">Clear</button>
+    <span id="status"></span>
+  </div>
+
+  <div id="viewer"></div>
+
+  <div class="usage">
+    <h2>Script Tag Usage</h2>
+    <pre><code>&lt;script src="https://pilotso11.github.io/pdflight/pdflight.iife.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  const viewer = new pdflight.PdfViewer(document.getElementById('viewer'), {
+    toolbar: true
+  });
+  viewer.load('document.pdf');
+&lt;/script&gt;</code></pre>
+
+    <h2>ESM Import Usage</h2>
+    <pre><code>&lt;script type="module"&gt;
+  import { PdfViewer } from 'https://pilotso11.github.io/pdflight/pdflight.js';
+  const viewer = new PdfViewer(document.getElementById('viewer'), {
+    toolbar: true
+  });
+  viewer.load('document.pdf');
+&lt;/script&gt;</code></pre>
+  </div>
+
+  <!-- Load pdflight via script tag (IIFE build) -->
+  <script src="./pdflight.iife.js"></script>
+  <script>
+    const viewer = new pdflight.PdfViewer(document.getElementById('viewer'), {
+      toolbar: true,
+    });
+
+    const status = document.getElementById('status');
+    let lastMatches = [];
+
+    document.getElementById('file-input').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      status.textContent = 'Loading...';
+      const buffer = await file.arrayBuffer();
+      await viewer.load(buffer);
+      status.textContent = 'Loaded ' + file.name;
+    });
+
+    document.getElementById('search-btn').addEventListener('click', async () => {
+      const query = document.getElementById('search-input').value.trim();
+      if (!query) return;
+      lastMatches = await viewer.search(query);
+      status.textContent = lastMatches.length + ' matches';
+    });
+
+    document.getElementById('highlight-btn').addEventListener('click', () => {
+      viewer.removeAllHighlights();
+      viewer.addHighlights(lastMatches.map((m, i) => ({
+        id: 'h-' + i,
+        page: m.page,
+        startChar: m.startChar,
+        endChar: m.endChar,
+        color: 'rgba(255, 255, 0, 0.4)',
+      })));
+    });
+
+    document.getElementById('clear-btn').addEventListener('click', () => {
+      viewer.removeAllHighlights();
+      lastMatches = [];
+      status.textContent = '';
+    });
+  </script>
+</body>
+</html>
