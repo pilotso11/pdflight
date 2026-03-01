@@ -14,4 +14,6 @@ export type { SearchMatch } from './search/types';
 export type { Highlight, HighlightRect } from './highlight/types';
 export type { PageTextIndex, PdflightTextItem, CharMapping } from './types';
 
-export const VERSION = '0.1.0';
+// Injected at build time by Vite from package.json
+declare const __PDFLIGHT_VERSION__: string;
+export const VERSION: string = typeof __PDFLIGHT_VERSION__ !== 'undefined' ? __PDFLIGHT_VERSION__ : 'dev';

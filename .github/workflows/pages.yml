@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 
 permissions:
@@ -29,7 +29,26 @@ jobs:
 
       - run: bun install
 
-      - run: bun run build:cdn
+      - name: Extract version from tag
+        id: version
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION=$(jq -r .version package.json)
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build CDN bundles
+        run: bun run build:cdn
+        env:
+          CDN_VERSION: ${{ steps.version.outputs.version }}
+
+      - name: Create unversioned copies (latest)
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          cp dist-cdn/pdflight-${VERSION}.iife.js dist-cdn/pdflight.iife.js
+          cp dist-cdn/pdflight-${VERSION}.js dist-cdn/pdflight.js
 
       - name: Copy example page to dist-cdn
         run: cp cdn/example.html dist-cdn/

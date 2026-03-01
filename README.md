@@ -34,7 +34,7 @@ viewer.addHighlights(matches.map((m, i) => ({
 
 ## CDN Usage
 
-Use pdflight directly in HTML without any build tools:
+Use pdflight directly in HTML without any build tools. The URLs below always point to the latest release:
 
 ### Script Tag
 
@@ -59,6 +59,8 @@ Use pdflight directly in HTML without any build tools:
   viewer.load('document.pdf');
 </script>
 ```
+
+Versioned URLs are also available (e.g. `pdflight-0.1.0.iife.js`). See the [releases page](https://github.com/pilotso11/pdflight/releases) for version history and CDN URLs.
 
 See the [live example](https://pilotso11.github.io/pdflight/example.html).
 

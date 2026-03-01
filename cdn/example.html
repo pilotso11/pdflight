@@ -40,7 +40,7 @@
   <div id="viewer"></div>
 
   <div class="usage">
-    <h2>Script Tag Usage</h2>
+    <h2>Script Tag Usage (latest)</h2>
     <pre><code>&lt;script src="https://pilotso11.github.io/pdflight/pdflight.iife.js"&gt;&lt;/script&gt;
 &lt;script&gt;
   const viewer = new pdflight.PdfViewer(document.getElementById('viewer'), {
@@ -49,7 +49,7 @@
   viewer.load('document.pdf');
 &lt;/script&gt;</code></pre>
 
-    <h2>ESM Import Usage</h2>
+    <h2>ESM Import Usage (latest)</h2>
     <pre><code>&lt;script type="module"&gt;
   import { PdfViewer } from 'https://pilotso11.github.io/pdflight/pdflight.js';
   const viewer = new PdfViewer(document.getElementById('viewer'), {
@@ -67,6 +67,11 @@
       toolbar: true,
     });
     window.viewer = viewer;
+
+    // Show version
+    if (typeof pdflight.VERSION !== 'undefined') {
+      document.querySelector('h1').textContent += ' v' + pdflight.VERSION;
+    }
 
     const status = document.getElementById('status');
     let lastMatches = [];

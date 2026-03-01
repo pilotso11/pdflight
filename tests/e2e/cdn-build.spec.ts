@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Seth Osher. MIT License.
 import { test, expect } from '@playwright/test';
 import { execSync } from 'child_process';
-import { copyFileSync, existsSync, readFileSync } from 'fs';
+import { copyFileSync, existsSync, readFileSync, readdirSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { createServer, type Server } from 'http';
@@ -20,6 +20,17 @@ test.describe('CDN Build', () => {
   test.beforeAll(async () => {
     // Build the CDN bundles (hardcoded command, no user input)
     execSync('bun run build:cdn', { cwd: ROOT, stdio: 'pipe' });
+
+    // Create unversioned copies (mirrors what the GitHub Action does)
+    const files = readdirSync(DIST_CDN);
+    const iifeVersioned = files.find(f => /^pdflight-[\d.]+\.iife\.js$/.test(f));
+    const esmVersioned = files.find(f => /^pdflight-[\d.]+\.js$/.test(f));
+    if (iifeVersioned) {
+      copyFileSync(resolve(DIST_CDN, iifeVersioned), resolve(DIST_CDN, 'pdflight.iife.js'));
+    }
+    if (esmVersioned) {
+      copyFileSync(resolve(DIST_CDN, esmVersioned), resolve(DIST_CDN, 'pdflight.js'));
+    }
 
     // Copy example.html and a test PDF into dist-cdn
     copyFileSync(resolve(ROOT, 'cdn/example.html'), resolve(DIST_CDN, 'example.html'));
@@ -56,14 +67,18 @@ test.describe('CDN Build', () => {
     server?.close();
   });
 
-  test('IIFE bundle produces expected output files', async () => {
+  test('produces versioned and unversioned output files', async () => {
+    const files = readdirSync(DIST_CDN);
+    // Versioned files from the build
+    expect(files.some(f => /^pdflight-[\d.]+\.iife\.js$/.test(f))).toBe(true);
+    expect(files.some(f => /^pdflight-[\d.]+\.js$/.test(f))).toBe(true);
+    // Unversioned copies (latest)
     expect(existsSync(resolve(DIST_CDN, 'pdflight.iife.js'))).toBe(true);
     expect(existsSync(resolve(DIST_CDN, 'pdflight.js'))).toBe(true);
   });
 
-  test('IIFE bundle contains inlined worker (no import.meta.url for worker)', async () => {
+  test('IIFE bundle contains inlined worker', async () => {
     const iife = readFileSync(resolve(DIST_CDN, 'pdflight.iife.js'), 'utf-8');
-    // Should contain blob URL creation for the worker
     expect(iife).toContain('application/javascript');
     expect(iife).toContain('createObjectURL');
   });
@@ -71,14 +86,12 @@ test.describe('CDN Build', () => {
   test('loads PDF via IIFE bundle and renders', async ({ page }) => {
     await page.goto(`http://localhost:${CDN_PORT}/example.html`);
 
-    // Load PDF via JS
     await page.evaluate(async () => {
       const resp = await fetch('/sample.pdf');
       const buffer = await resp.arrayBuffer();
       await (window as any).viewer.load(buffer);
     });
 
-    // Wait for canvas to appear
     await page.waitForSelector('#viewer canvas', { timeout: 10000 });
     const canvasCount = await page.locator('#viewer canvas').count();
     expect(canvasCount).toBeGreaterThan(0);
@@ -126,7 +139,6 @@ test.describe('CDN Build', () => {
       })));
     });
 
-    // Wait for highlights to render
     await page.waitForSelector('.pdflight-highlight', { timeout: 5000 });
     const hlCount = await page.locator('.pdflight-highlight').count();
     expect(hlCount).toBeGreaterThan(0);
@@ -143,22 +155,22 @@ test.describe('CDN Build', () => {
 
     await page.waitForSelector('#viewer canvas', { timeout: 10000 });
 
-    // Toolbar should be rendered
     const toolbar = page.locator('.pdflight-toolbar');
     await expect(toolbar).toBeVisible();
   });
 
-  test('ESM bundle exports expected symbols', async ({ page }) => {
+  test('ESM bundle exports expected symbols including VERSION', async ({ page }) => {
     await page.goto(`http://localhost:${CDN_PORT}/example.html`);
 
-    const exports = await page.evaluate(async () => {
-      const mod = await import(`http://localhost:${8091}/pdflight.js`);
-      return Object.keys(mod);
-    });
+    const result = await page.evaluate(async (port) => {
+      const mod = await import(`http://localhost:${port}/pdflight.js`);
+      return { keys: Object.keys(mod), version: mod.VERSION };
+    }, CDN_PORT);
 
-    expect(exports).toContain('PdfViewer');
-    expect(exports).toContain('searchPages');
-    expect(exports).toContain('computeHighlightRects');
-    expect(exports).toContain('VERSION');
+    expect(result.keys).toContain('PdfViewer');
+    expect(result.keys).toContain('searchPages');
+    expect(result.keys).toContain('computeHighlightRects');
+    expect(result.keys).toContain('VERSION');
+    expect(result.version).toMatch(/^\d+\.\d+\.\d+$/);
   });
 });
