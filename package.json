@@ -15,6 +15,7 @@
   "files": ["dist"],
   "scripts": {
     "build": "vite build",
+    "build:cdn": "vite build --config vite.config.cdn.ts",
     "dev": "vite --config vite.config.demo.ts",
     "test": "vitest run",
     "test:watch": "vitest",
