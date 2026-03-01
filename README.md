@@ -2,7 +2,7 @@
 
 PDF viewer library with precise text highlighting and smart search.
 
-![pdflight demo — search and highlight](docs/screenshot.png)
+![pdflight demo — search and highlight](https://raw.githubusercontent.com/pilotso11/pdflight/main/docs/screenshot.png)
 
 ## Features
 
