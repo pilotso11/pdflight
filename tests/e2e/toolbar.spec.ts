@@ -36,16 +36,17 @@ test.describe('Viewer Toolbar', () => {
   test('fit mode dropdown switches modes', async ({ page }) => {
     const zoomLevel = page.locator('.pdflight-toolbar-zoom-level');
 
-    // Get fit-width zoom
-    const fitWidthZoom = await zoomLevel.textContent();
-
-    // Switch to fit-page
-    await page.selectOption('.pdflight-toolbar-select', 'page');
-    await page.waitForSelector('.pdflight-page-container', { timeout: 5000 });
+    // Default is fit-page, get that zoom first
     const fitPageZoom = await zoomLevel.textContent();
 
-    // Fit-page should be smaller for portrait PDF
-    expect(parseInt(fitPageZoom!)).toBeLessThan(parseInt(fitWidthZoom!));
+    // Switch to fit-width
+    await page.selectOption('.pdflight-toolbar-select', 'width');
+    await page.waitForSelector('.pdflight-page-container', { timeout: 5000 });
+    await page.waitForTimeout(300);
+    const fitWidthZoom = await zoomLevel.textContent();
+
+    // Fit-width should be larger than fit-page for portrait PDF
+    expect(parseInt(fitWidthZoom!)).toBeGreaterThan(parseInt(fitPageZoom!));
   });
 
   test('rotate buttons rotate the page', async ({ page }) => {

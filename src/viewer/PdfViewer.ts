@@ -35,8 +35,8 @@ export class PdfViewer {
   private pdfDocument: pdfjs.PDFDocumentProxy | null = null;
   private currentPage = 1;
   private currentZoom = 1.0;
-  private fitMode: 'width' | 'page' | 'none' = 'width';
-  private currentRotation = 0;
+  private fitMode: 'width' | 'page' | 'none' = 'page';
+  private pageRotations = new Map<number, number>();
   private pageRenderers = new Map<number, PageRenderer>();
   private textIndices = new Map<number, PageTextIndex>();
   private highlightLayer = new HighlightLayer();
@@ -56,7 +56,7 @@ export class PdfViewer {
     this.options = {
       initialPage: options.initialPage ?? 1,
       initialZoom: options.initialZoom ?? 1.0,
-      fitMode: options.fitMode ?? 'width',
+      fitMode: options.fitMode ?? 'page',
       sidebar: options.sidebar ?? false,
       pageStepper: options.pageStepper ?? false,
       showSearchMatchCounts: options.showSearchMatchCounts ?? false,
@@ -96,7 +96,7 @@ export class PdfViewer {
   /** Load a PDF from URL or binary data. */
   async load(source: string | ArrayBuffer | Uint8Array): Promise<void> {
     console.log('[PdfViewer] load() called with source:', typeof source);
-    this.currentRotation = 0;
+    this.pageRotations.clear();
     this.pageDimensions.clear();
     try {
       let loadingTask: pdfjs.PDFDocumentLoadingTask;
@@ -120,7 +120,7 @@ export class PdfViewer {
 
       // Cache unscaled page dimensions from first page for fit calculations
       const firstPage = await this.pdfDocument.getPage(1);
-      const unscaledVp = firstPage.getViewport({ scale: 1, rotation: this.currentRotation });
+      const unscaledVp = firstPage.getViewport({ scale: 1, rotation: this.getPageRotation(1) });
       this.pageDimensions.set(1, { width: unscaledVp.width, height: unscaledVp.height });
 
       // Apply fit mode to compute initial zoom
@@ -202,24 +202,31 @@ export class PdfViewer {
     return this.fitMode;
   }
 
-  /** Rotate the page by 90 or -90 degrees. */
+  /** Rotate the current page by 90 or -90 degrees. Only affects the current page. */
   rotate(degrees: 90 | -90): void {
-    this.currentRotation = ((this.currentRotation + degrees) % 360 + 360) % 360;
-    // Clear dimension cache since rotation changes effective dimensions
-    this.pageDimensions.clear();
+    const page = this.currentPage;
+    const current = this.getPageRotation(page);
+    const newRotation = ((current + degrees) % 360 + 360) % 360;
+    this.pageRotations.set(page, newRotation);
+    // Clear dimension cache for this page since rotation changes effective dimensions
+    this.pageDimensions.delete(page);
     this.renderCurrentPage().then(() => {
       // Re-cache dimensions for current page and reapply fit
       if (this.fitMode !== 'none') {
         this.applyFitMode();
       }
-      this.sidebar?.setRotation(this.currentRotation);
       this.emit('zoomchange', this.currentZoom);
     });
   }
 
-  /** Get current rotation in degrees (0, 90, 180, 270). */
+  /** Get rotation for the current page in degrees (0, 90, 180, 270). */
   getRotation(): number {
-    return this.currentRotation;
+    return this.getPageRotation(this.currentPage);
+  }
+
+  /** Get rotation for a specific page. */
+  private getPageRotation(page: number): number {
+    return this.pageRotations.get(page) ?? 0;
   }
 
   /** Search for text across all pages. */
@@ -343,6 +350,7 @@ export class PdfViewer {
     this.pageRenderers.clear();
     this.textIndices.clear();
     this.pageDimensions.clear();
+    this.pageRotations.clear();
     this.highlights.clear();
     this.eventListeners.clear();
     this.pdfDocument = null;
@@ -365,7 +373,7 @@ export class PdfViewer {
       width: 0,
       height: 0,
       scale: this.currentZoom,
-    }, this.currentRotation);
+    }, this.getPageRotation(this.currentPage));
     console.log('[PdfViewer] Calling renderer.render');
     await renderer.render(this.container, this.pdfDocument);
     console.log('[PdfViewer] renderer.render completed');
@@ -381,7 +389,8 @@ export class PdfViewer {
 
     // Cache page dimensions for fit mode (use unscaled PDF page dimensions)
     if (!this.pageDimensions.has(this.currentPage) && renderer.getPdfPage()) {
-      const unscaledVp = renderer.getPdfPage()!.getViewport({ scale: 1, rotation: this.currentRotation });
+      const pageRotation = this.getPageRotation(this.currentPage);
+      const unscaledVp = renderer.getPdfPage()!.getViewport({ scale: 1, rotation: pageRotation });
       this.pageDimensions.set(this.currentPage, { width: unscaledVp.width, height: unscaledVp.height });
     }
 
@@ -411,7 +420,7 @@ export class PdfViewer {
           width: 0,
           height: 0,
           scale: this.currentZoom,
-        }, this.currentRotation);
+        }, this.getPageRotation(i));
         const tempContainer = document.createElement('div');
         tempContainer.style.cssText = 'position: absolute; visibility: hidden;';
         document.body.appendChild(tempContainer);
@@ -449,7 +458,7 @@ export class PdfViewer {
 
           const rects = computeHighlightRects(
             textIndex, highlight, pdfPageHeight, this.currentZoom,
-            this.currentRotation, unrotatedWidth, unrotatedHeight,
+            this.getPageRotation(this.currentPage), unrotatedWidth, unrotatedHeight,
           );
           pageHighlights.push({ highlight, rects });
         }

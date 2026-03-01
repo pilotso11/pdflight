@@ -27,6 +27,10 @@ test.describe('Landscape & Mixed Orientation', () => {
 
   test('fit-width zoom differs between portrait and landscape pages', async ({ page }) => {
     const zoomLevel = page.locator('.pdflight-toolbar-zoom-level');
+
+    // Switch to fit-width mode first (default is fit-page)
+    await page.selectOption('.pdflight-toolbar-select', 'width');
+    await page.waitForTimeout(500);
     const portraitZoom = parseInt((await zoomLevel.textContent())!);
 
     // Navigate to landscape page 2

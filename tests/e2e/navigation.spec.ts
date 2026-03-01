@@ -28,6 +28,10 @@ test.describe('Navigation', () => {
     const viewer = page.locator('[data-testid="pdf-viewer"]');
     const canvas = viewer.locator('canvas').first();
 
+    // Switch to fit-width so the page extends beyond the viewport vertically
+    await page.selectOption('.pdflight-toolbar-select', 'width');
+    await page.waitForTimeout(500);
+
     // Get initial scroll position
     const initialScrollX = await viewer.evaluate(el => el.scrollLeft);
     const initialScrollY = await viewer.evaluate(el => el.scrollTop);
@@ -46,7 +50,7 @@ test.describe('Navigation', () => {
   });
 
   test('fit-width scales page to fill container width', async ({ page }) => {
-    // Default mode is fit-width — page canvas should be close to container width
+    // Switch to fit-width — page canvas should be close to container width
     await page.selectOption('.pdflight-toolbar-select', 'width');
     await page.waitForSelector('.pdflight-page-container', { timeout: 5000 });
 
