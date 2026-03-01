@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Seth Osher. MIT License.
 export interface Rect {
   x: number;
   y: number;

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Seth Osher. MIT License.
 import * as pdfjs from 'pdfjs-dist';
 
 const THUMBNAIL_WIDTH = 150;

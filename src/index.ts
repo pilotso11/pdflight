@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Seth Osher. MIT License.
 // pdflight - PDF viewer with precise text highlighting and smart search
 
 export { PdfViewer, type PdfViewerOptions } from './viewer/PdfViewer';

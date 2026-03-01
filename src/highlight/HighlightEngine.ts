@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Seth Osher. MIT License.
 import type { PageTextIndex } from '../types';
 import type { Highlight, HighlightRect } from './types';
 import { rectFromTransform, rotatePdfRect, pdfRectToCssRect, mergeAdjacentRects, sliceRectHorizontal } from '../utils/geometry';

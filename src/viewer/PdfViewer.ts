@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Seth Osher. MIT License.
 import * as pdfjs from 'pdfjs-dist';
 import type { PageTextIndex } from '../types';
 import type { SearchMatch } from '../search/types';

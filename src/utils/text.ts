@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Seth Osher. MIT License.
 /**
  * Collapse multiple whitespace characters (spaces, tabs, newlines) into a single space.
  * Trims leading and trailing whitespace.

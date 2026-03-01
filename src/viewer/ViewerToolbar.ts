@@ -1,4 +1,4 @@
-// src/viewer/ViewerToolbar.ts
+// Copyright (c) 2026 Seth Osher. MIT License.
 
 export interface ToolbarConfig {
   stepper?: boolean;

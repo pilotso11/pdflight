@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Seth Osher. MIT License.
 import type { HighlightRect } from './types';
 import type { Highlight } from './types';
 

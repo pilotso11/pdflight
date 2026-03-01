@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Seth Osher. MIT License.
 /** A highlight to be rendered on the PDF. */
 export interface Highlight {
   id: string;

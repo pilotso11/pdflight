@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Seth Osher. MIT License.
 /** A text item extracted from pdf.js getTextContent(), enriched with per-char widths. */
 export interface PdflightTextItem {
   str: string;

@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Seth Osher. MIT License.
 import type { PdflightTextItem, CharMapping, PageTextIndex } from '../types';
 import { normalizeQuotes } from '../utils/text';
 

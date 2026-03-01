@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Seth Osher. MIT License.
 import * as pdfjs from 'pdfjs-dist';
 import type { PageTextIndex, PdflightTextItem } from '../types';
 import { estimateProportionalCharWidths } from '../utils/text.js';
