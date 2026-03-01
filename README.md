@@ -60,11 +60,12 @@ pdflight builds a normalized text index from pdf.js's `getTextContent()` data:
 
 ### Precise Highlighting
 
-Unlike solutions that use DOM measurement, pdflight computes highlights from pdf.js's transform matrices:
-1. Retrieves per-character widths from pdf.js font objects
-2. Computes rectangles from `transform` matrix + font metrics
-3. Merges adjacent rectangles for efficient DOM rendering
-4. Survives zoom/pan/resize by recomputing from source data
+Unlike solutions that use DOM measurement, pdflight computes highlights from pdf.js's glyph-level position data:
+1. Computes bounding rectangles from each text item's `transform` matrix, with descender adjustment for characters like p, g, y
+2. Uses per-character widths from pdf.js font objects for precise partial-word highlighting
+3. Handles page rotation by transforming PDF-space rects to match the rotated viewport
+4. Merges adjacent rectangles on the same line for efficient DOM rendering
+5. Survives zoom/pan/resize/rotation by recomputing from source data — no DOM measurement needed
 
 ## License
 

@@ -126,12 +126,14 @@ tests/
 ### How Precise Highlighting Works
 
 1. A highlight is defined as `{ page: number, startChar: number, endChar: number }` in the normalized text index
-2. `HighlightEngine` maps this character range back to text content items using the index
-3. For each involved text item, it computes a rectangle using the item's `transform` matrix, `width`, and `height` from pdf.js
-4. For partial items (highlight starts/ends mid-item), character-level x-offsets are estimated using font metrics
-5. Adjacent rectangles on the same line are merged; the result is a set of `DOMRect`-like objects
-6. `HighlightLayer` renders these as absolutely-positioned divs, z-indexed between canvas and text layer
-7. On viewport changes (zoom/pan/resize), rectangles are recomputed from the source data — no DOM measurement needed
+2. `HighlightEngine` maps this character range back to text content items using the index's `charMap`
+3. For each text item, a bounding rectangle is computed from the item's `transform` matrix (encodes position, scale, skew), `width`, and `height`
+4. Rectangles are extended below the text baseline by a descender fraction (~25% of font size) to cover characters like p, g, y, q whose strokes go below the baseline
+5. For partial items (highlight starts/ends mid-item), per-character widths extracted from pdf.js font objects (`charWidths`) determine the exact horizontal slice. Falls back to uniform spacing when charWidths aren't available.
+6. When pages are rotated, PDF-space rectangles are transformed to match the rotated viewport before CSS conversion
+7. Adjacent rectangles on the same line are merged into a single rect
+8. `HighlightLayer` renders these as absolutely-positioned divs, z-indexed between canvas and text layer
+9. On viewport changes (zoom/pan/resize/rotation), rectangles are recomputed from the source data — no DOM measurement needed
 
 ### Highlight Behavior
 
