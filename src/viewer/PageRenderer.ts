@@ -1,5 +1,6 @@
 import * as pdfjs from 'pdfjs-dist';
 import type { PageTextIndex, PdflightTextItem } from '../types';
+import { estimateProportionalCharWidths } from '../utils/text.js';
 
 export interface PageViewport {
   pageNumber: number;
@@ -225,15 +226,16 @@ export class PageRenderer {
 
   private estimateCharWidths(textItem: any): number[] {
     const str = textItem.str || '';
-    const fontSize = textItem.transform[0];
     const totalWidth = textItem.width || 0;
+    const fontName = textItem.fontName || '';
 
     if (str.length === 0) return [];
-    if (totalWidth === 0) return Array(str.length).fill(fontSize * 0.5);
+    if (totalWidth === 0) {
+      const fontSize = textItem.transform[0];
+      return Array(str.length).fill(fontSize * 0.5);
+    }
 
-    // Simple even distribution for now
-    const avgWidth = totalWidth / str.length;
-    return Array(str.length).fill(avgWidth);
+    return estimateProportionalCharWidths(str, totalWidth, fontName);
   }
 
   /** Update zoom level and re-render. */
