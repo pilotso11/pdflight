@@ -215,6 +215,7 @@ export class PdfViewer {
       if (this.fitMode !== 'none') {
         this.applyFitMode();
       }
+      this.sidebar?.setPageRotation(page, newRotation);
       this.emit('zoomchange', this.currentZoom);
     });
   }
