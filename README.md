@@ -32,6 +32,36 @@ viewer.addHighlights(matches.map((m, i) => ({
 })));
 ```
 
+## CDN Usage
+
+Use pdflight directly in HTML without any build tools:
+
+### Script Tag
+
+```html
+<script src="https://pilotso11.github.io/pdflight/pdflight.iife.js"></script>
+<script>
+  const viewer = new pdflight.PdfViewer(document.getElementById('viewer'), {
+    toolbar: true,
+  });
+  viewer.load('document.pdf');
+</script>
+```
+
+### ES Module
+
+```html
+<script type="module">
+  import { PdfViewer } from 'https://pilotso11.github.io/pdflight/pdflight.js';
+  const viewer = new PdfViewer(document.getElementById('viewer'), {
+    toolbar: true,
+  });
+  viewer.load('document.pdf');
+</script>
+```
+
+See the [live example](https://pilotso11.github.io/pdflight/example.html).
+
 ## Demo
 
 Run `bun run dev` and open http://localhost:5173 to see the demo app exercising all features.
@@ -46,6 +76,7 @@ bun run test         # Run unit tests
 bun run test:coverage # Run tests with coverage
 bun run lint         # ESLint check
 bun run typecheck    # TypeScript type checking
+bun run build:cdn    # Build self-contained CDN bundles (IIFE + ESM)
 bun run test:e2e     # Run Playwright browser tests
 ```
 

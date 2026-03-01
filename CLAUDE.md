@@ -36,6 +36,7 @@ bun run test:coverage      # Run unit tests with coverage report (target: 90%+)
 bun run test:ui            # Run tests with Vitest UI
 bunx vitest run src/path/to/file.test.ts   # Run a single unit test file
 bunx vitest -t "test name pattern"         # Run unit tests matching a pattern
+bun run build:cdn          # Build self-contained CDN bundles (IIFE + ESM) into dist-cdn/
 bun run test:e2e           # Run Playwright browser tests against demo app
 bunx playwright test tests/e2e/specific.spec.ts  # Run a single E2E test file
 bun run lint               # ESLint check
