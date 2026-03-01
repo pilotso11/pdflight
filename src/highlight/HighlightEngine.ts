@@ -32,7 +32,7 @@ export function computeHighlightRects(
   }
 
   const { startChar, endChar } = highlight;
-  if (startChar >= endChar || endChar > pageIndex.charMap.length) {
+  if (startChar < 0 || startChar >= endChar || endChar > pageIndex.charMap.length) {
     return [];
   }
 

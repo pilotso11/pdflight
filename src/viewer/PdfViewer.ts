@@ -47,6 +47,7 @@ export class PdfViewer {
   private toolbar: ViewerToolbar | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private pageDimensions = new Map<number, { width: number; height: number }>();
+  private renderGeneration = 0;
 
   constructor(container: HTMLElement, options: PdfViewerOptions = {}) {
     // Configure pdf.js worker (must be done before loading PDFs)
@@ -154,15 +155,22 @@ export class PdfViewer {
     if (!this.pdfDocument) return;
     const pageCount = this.pdfDocument.numPages;
     this.currentPage = Math.max(1, Math.min(page, pageCount));
-    this.renderCurrentPage().then(() => {
-      if (this.fitMode !== 'none') {
-        this.applyFitMode();
+    const gen = ++this.renderGeneration;
+    (async () => {
+      try {
+        await this.renderCurrentPage();
+        if (gen !== this.renderGeneration) return; // stale render, skip UI updates
+        if (this.fitMode !== 'none') {
+          this.applyFitMode();
+        }
+        this.sidebar?.setActivePage(this.currentPage);
+        this.sidebar?.scrollToActive();
+        this.toolbar?.updatePageInfo(this.currentPage, this.pdfDocument!.numPages);
+        this.emit('pagechange', this.currentPage);
+      } catch (err) {
+        console.error('[PdfViewer] goToPage render failed:', err);
       }
-      this.sidebar?.setActivePage(this.currentPage);
-      this.sidebar?.scrollToActive();
-      this.toolbar?.updatePageInfo(this.currentPage, this.pdfDocument!.numPages);
-      this.emit('pagechange', this.currentPage);
-    });
+    })();
   }
 
   /** Get current page number. */
@@ -211,14 +219,21 @@ export class PdfViewer {
     this.pageRotations.set(page, newRotation);
     // Clear dimension cache for this page since rotation changes effective dimensions
     this.pageDimensions.delete(page);
-    this.renderCurrentPage().then(() => {
-      // Re-cache dimensions for current page and reapply fit
-      if (this.fitMode !== 'none') {
-        this.applyFitMode();
+    const gen = ++this.renderGeneration;
+    (async () => {
+      try {
+        await this.renderCurrentPage();
+        if (gen !== this.renderGeneration) return; // stale render, skip UI updates
+        // Re-cache dimensions for current page and reapply fit
+        if (this.fitMode !== 'none') {
+          this.applyFitMode();
+        }
+        this.sidebar?.setPageRotation(page, newRotation);
+        this.emit('zoomchange', this.currentZoom);
+      } catch (err) {
+        console.error('[PdfViewer] rotate render failed:', err);
       }
-      this.sidebar?.setPageRotation(page, newRotation);
-      this.emit('zoomchange', this.currentZoom);
-    });
+    })();
   }
 
   /** Get rotation for the current page in degrees (0, 90, 180, 270). */
@@ -426,13 +441,16 @@ export class PdfViewer {
         const tempContainer = document.createElement('div');
         tempContainer.style.cssText = 'position: absolute; visibility: hidden;';
         document.body.appendChild(tempContainer);
-        await renderer.render(tempContainer, this.pdfDocument);
-        const textIndex = renderer.getTextIndex();
-        if (textIndex) {
-          this.textIndices.set(i, textIndex);
+        try {
+          await renderer.render(tempContainer, this.pdfDocument);
+          const textIndex = renderer.getTextIndex();
+          if (textIndex) {
+            this.textIndices.set(i, textIndex);
+          }
+        } finally {
+          renderer.destroy();
+          tempContainer.remove();
         }
-        renderer.destroy();
-        tempContainer.remove();
       }
     }
   }
