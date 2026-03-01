@@ -26,24 +26,12 @@
         <span id="search-results" data-testid="search-results"></span>
       </div>
       <div class="toolbar-section">
-        <button id="zoom-out" data-testid="zoom-out">−</button>
-        <span id="zoom-level" data-testid="zoom-level">100%</span>
-        <button id="zoom-in" data-testid="zoom-in">+</button>
-        <select id="fit-mode" data-testid="fit-mode">
-          <option value="width">Fit Width</option>
-          <option value="page">Fit Page</option>
-          <option value="none">None</option>
-        </select>
-      </div>
-      <div class="toolbar-section">
         <label><input type="checkbox" id="sidebar-toggle" data-testid="sidebar-toggle"> Sidebar</label>
-        <label><input type="checkbox" id="stepper-toggle" data-testid="stepper-toggle"> Stepper</label>
       </div>
     </header>
 
     <div id="viewer-container" class="viewer-container">
       <aside id="sidebar" class="sidebar hidden" data-testid="sidebar">
-        <h2>Thumbnails</h2>
         <div id="thumbnails" data-testid="thumbnails"></div>
       </aside>
 
@@ -56,14 +44,6 @@
         <button id="highlight-all" data-testid="highlight-all">Highlight All Search Results</button>
         <button id="clear-highlights" data-testid="clear-highlights">Clear All</button>
         <input type="color" id="highlight-color" value="#ffff00" data-testid="highlight-color">
-      </div>
-      <div class="control-section">
-        <h3>Navigation</h3>
-        <div id="page-stepper" class="page-stepper hidden" data-testid="page-stepper">
-          <button id="prev-page" data-testid="prev-page">◀ Prev</button>
-          <span id="page-info" data-testid="page-info">Page 1 of 1</span>
-          <button id="next-page" data-testid="next-page">Next ▶</button>
-        </div>
       </div>
       <div class="control-section">
         <h3>Serialize</h3>

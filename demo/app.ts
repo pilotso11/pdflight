@@ -6,18 +6,9 @@ const demoPdfSelect = document.getElementById('demo-pdf') as HTMLSelectElement;
 const searchInput = document.getElementById('search-input') as HTMLInputElement;
 const searchBtn = document.getElementById('search-btn') as HTMLButtonElement;
 const searchResults = document.getElementById('search-results') as HTMLSpanElement;
-const zoomIn = document.getElementById('zoom-in') as HTMLButtonElement;
-const zoomOut = document.getElementById('zoom-out') as HTMLButtonElement;
-const zoomLevel = document.getElementById('zoom-level') as HTMLSpanElement;
-const fitMode = document.getElementById('fit-mode') as HTMLSelectElement;
 const sidebarToggle = document.getElementById('sidebar-toggle') as HTMLInputElement;
-const stepperToggle = document.getElementById('stepper-toggle') as HTMLInputElement;
 const sidebar = document.getElementById('sidebar') as HTMLElement;
 const thumbnails = document.getElementById('thumbnails') as HTMLElement;
-const pageStepper = document.getElementById('page-stepper') as HTMLElement;
-const prevPage = document.getElementById('prev-page') as HTMLButtonElement;
-const nextPage = document.getElementById('next-page') as HTMLButtonElement;
-const pageInfo = document.getElementById('page-info') as HTMLSpanElement;
 const highlightAll = document.getElementById('highlight-all') as HTMLButtonElement;
 const clearHighlights = document.getElementById('clear-highlights') as HTMLButtonElement;
 const highlightColor = document.getElementById('highlight-color') as HTMLInputElement;
@@ -38,6 +29,7 @@ function init() {
   console.log('[Demo App] pdfViewerContainer:', pdfViewerContainer);
 
   viewer = new PdfViewer(pdfViewerContainer, {
+    toolbar: true,
     tooltipContent: (h: Highlight) => `Highlight: ${h.id}`,
     showSearchMatchCounts: true,
   });
@@ -58,40 +50,10 @@ function init() {
   searchBtn.addEventListener('click', handleSearch);
   searchInput.addEventListener('keydown', (e) => e.key === 'Enter' && handleSearch());
 
-  // Zoom
-  zoomIn.addEventListener('click', () => {
-    if (viewer) viewer.setZoom(viewer.getZoom() + 0.25);
-  });
-  zoomOut.addEventListener('click', () => {
-    if (viewer) viewer.setZoom(Math.max(0.25, viewer.getZoom() - 0.25));
-  });
-  viewer?.on('zoomchange', (zoom: number) => {
-    zoomLevel.textContent = `${Math.round(zoom * 100)}%`;
-  });
-
-  // Fit mode
-  fitMode.addEventListener('change', () => {
-    viewer?.setFitMode(fitMode.value as 'width' | 'page' | 'none');
-  });
-
   // Sidebar
   sidebarToggle.addEventListener('change', () => {
     sidebar.classList.toggle('hidden', !sidebarToggle.checked);
   });
-
-  // Stepper
-  stepperToggle.addEventListener('change', () => {
-    pageStepper.classList.toggle('hidden', !stepperToggle.checked);
-  });
-
-  // Navigation
-  prevPage.addEventListener('click', () => {
-    if (viewer) viewer.goToPage(viewer.getCurrentPage() - 1);
-  });
-  nextPage.addEventListener('click', () => {
-    if (viewer) viewer.goToPage(viewer.getCurrentPage() + 1);
-  });
-  viewer?.on('pagechange', updatePageInfo);
 
   // Highlights
   highlightAll.addEventListener('click', highlightAllResults);
@@ -117,7 +79,6 @@ function init() {
         endChar: h.endChar,
         text: '',
       }));
-      updatePageInfo();
     }
   });
 }
@@ -127,7 +88,6 @@ async function handleFileSelect(e: Event) {
   if (file && viewer) {
     const arrayBuffer = await file.arrayBuffer();
     await viewer.load(arrayBuffer);
-    updatePageInfo();
   }
 }
 
@@ -138,7 +98,6 @@ async function handleDemoPdfSelect(e: Event) {
     console.log('[Demo App] Loading PDF...');
     await viewer.load(`/tests/fixtures/${value}`);
     console.log('[Demo App] PDF loaded');
-    updatePageInfo();
   }
 }
 
@@ -163,11 +122,6 @@ function highlightAllResults() {
     color: currentHighlightColor,
   }));
   viewer.addHighlights(highlights);
-}
-
-function updatePageInfo() {
-  if (!viewer) return;
-  pageInfo.textContent = `Page ${viewer.getCurrentPage()} of ${viewer.getPageCount()}`;
 }
 
 // Start
