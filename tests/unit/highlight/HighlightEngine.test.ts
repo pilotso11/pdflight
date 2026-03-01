@@ -25,14 +25,17 @@ describe('computeHighlightRects', () => {
   const zoomScale = 1.5;
 
   it('computes rect for full-item highlight', () => {
+    // fontSize=12, descenderDepth=12*0.25=3
+    // PDF rect: y=500-3=497, height=12+3=15
+    // CSS rect: y=(792-497-15)*1.5=420, height=15*1.5=22.5
     const items = [makeItem('Hello', { transform: [12, 0, 0, 12, 100, 500] })];
     const index = buildPageTextIndex(1, items);
     const rects = computeHighlightRects(index, { page: 1, startChar: 0, endChar: 5, id: 'h1', color: 'yellow' }, pageHeight, zoomScale);
     expect(rects).toHaveLength(1);
     expect(rects[0].x).toBeCloseTo(100 * zoomScale);
-    expect(rects[0].y).toBeCloseTo((792 - 500 - 12) * zoomScale);
+    expect(rects[0].y).toBeCloseTo((792 - 497 - 15) * zoomScale);
     expect(rects[0].width).toBeCloseTo(5 * 7 * zoomScale);
-    expect(rects[0].height).toBeCloseTo(12 * zoomScale);
+    expect(rects[0].height).toBeCloseTo(15 * zoomScale);
   });
 
   it('computes rect for partial-item highlight (start offset)', () => {

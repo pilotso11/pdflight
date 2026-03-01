@@ -12,6 +12,10 @@ export interface Rect {
  *
  * For non-rotated text: rect is simply (tx, ty, width * scaleRatioX, height).
  * The scaleRatioX accounts for transforms where scaleX != fontSize.
+ *
+ * The rect extends below the baseline by a descender fraction to cover
+ * characters like p, g, y, q, j whose strokes go below the text baseline.
+ * In PDF coordinates (y-up), ty is the baseline — descenders go to ty - depth.
  */
 export function rectFromTransform(
   transform: number[],
@@ -25,11 +29,16 @@ export function rectFromTransform(
   const scaleRatioX = Math.sqrt(scaleX * scaleX + skewY * skewY) /
     Math.sqrt(scaleY * scaleY + skewX * skewX);
 
+  // Extend rect below baseline for descenders (~25% of font size).
+  // fontSize is derived from the vertical scale component of the transform.
+  const fontSize = Math.sqrt(scaleY * scaleY + skewX * skewX);
+  const descenderDepth = fontSize * 0.25;
+
   return {
     x: tx,
-    y: ty,
+    y: ty - descenderDepth,
     width: itemWidth * scaleRatioX,
-    height: itemHeight,
+    height: itemHeight + descenderDepth,
   };
 }
 

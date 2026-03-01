@@ -39,8 +39,12 @@ function init() {
 
   viewer = new PdfViewer(pdfViewerContainer, {
     tooltipContent: (h: Highlight) => `Highlight: ${h.id}`,
+    showSearchMatchCounts: true,
   });
   console.log('[Demo App] PdfViewer created:', viewer);
+
+  // Connect sidebar thumbnails container
+  viewer.setSidebarContainer(thumbnails);
 
   // File input
   const openBtn = document.querySelector('.btn');

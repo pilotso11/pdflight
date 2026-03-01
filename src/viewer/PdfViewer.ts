@@ -6,6 +6,7 @@ import { searchPages } from '../search/SearchEngine';
 import { computeHighlightRects } from '../highlight/HighlightEngine';
 import { HighlightLayer } from '../highlight/HighlightLayer';
 import { PageRenderer } from './PageRenderer';
+import { Sidebar, type PageHighlightInfo } from './Sidebar';
 
 export interface PdfViewerOptions {
   initialPage?: number;
@@ -13,6 +14,7 @@ export interface PdfViewerOptions {
   fitMode?: 'width' | 'page' | 'none';
   sidebar?: boolean;
   pageStepper?: boolean;
+  showSearchMatchCounts?: boolean;
   tooltipContent?: (highlight: Highlight) => string | HTMLElement;
   pageBufferSize?: number;
   onPageChange?: (page: number) => void;
@@ -37,6 +39,7 @@ export class PdfViewer {
   private highlightLayer = new HighlightLayer();
   private highlights = new Map<string, Highlight>();
   private eventListeners = new Map<EventType, Set<EventListener>>();
+  private sidebar: Sidebar | null = null;
 
   constructor(container: HTMLElement, options: PdfViewerOptions = {}) {
     // Configure pdf.js worker (must be done before loading PDFs)
@@ -50,6 +53,7 @@ export class PdfViewer {
       fitMode: options.fitMode ?? 'width',
       sidebar: options.sidebar ?? false,
       pageStepper: options.pageStepper ?? false,
+      showSearchMatchCounts: options.showSearchMatchCounts ?? false,
       tooltipContent: options.tooltipContent ?? null,
       pageBufferSize: options.pageBufferSize ?? 2,
       onPageChange: options.onPageChange ?? (() => {}),
@@ -86,6 +90,12 @@ export class PdfViewer {
       console.log('[PdfViewer] Calling renderCurrentPage for page:', this.currentPage);
       await this.renderCurrentPage();
       console.log('[PdfViewer] renderCurrentPage completed');
+
+      // Render sidebar thumbnails if connected
+      if (this.sidebar) {
+        await this.sidebar.render(this.pdfDocument);
+        this.sidebar.setActivePage(this.currentPage);
+      }
     } catch (error) {
       console.error('[PdfViewer] Error in load():', error);
       throw error;
@@ -97,7 +107,11 @@ export class PdfViewer {
     if (!this.pdfDocument) return;
     const pageCount = this.pdfDocument.numPages;
     this.currentPage = Math.max(1, Math.min(page, pageCount));
-    this.renderCurrentPage().then(() => this.emit('pagechange', this.currentPage));
+    this.renderCurrentPage().then(() => {
+      this.sidebar?.setActivePage(this.currentPage);
+      this.sidebar?.scrollToActive();
+      this.emit('pagechange', this.currentPage);
+    });
   }
 
   /** Get current page number. */
@@ -137,13 +151,25 @@ export class PdfViewer {
     await this.ensureAllTextIndices();
 
     const indices = Array.from(this.textIndices.values()).sort((a, b) => a.pageNumber - b.pageNumber);
-    return searchPages(indices, query);
+    const results = searchPages(indices, query);
+
+    // Auto-update sidebar match counts if flag is enabled
+    if (this.options.showSearchMatchCounts && this.sidebar) {
+      const counts = new Map<number, number>();
+      for (const match of results) {
+        counts.set(match.page, (counts.get(match.page) ?? 0) + 1);
+      }
+      this.sidebar.updateMatchCounts(counts);
+    }
+
+    return results;
   }
 
   /** Add a highlight. */
   addHighlight(highlight: Highlight): void {
     this.highlights.set(highlight.id, highlight);
     this.renderHighlights();
+    this.updateSidebarIndicators();
   }
 
   /** Add multiple highlights. */
@@ -152,18 +178,21 @@ export class PdfViewer {
       this.highlights.set(h.id, h);
     }
     this.renderHighlights();
+    this.updateSidebarIndicators();
   }
 
   /** Remove a highlight by ID. */
   removeHighlight(id: string): void {
     this.highlights.delete(id);
     this.highlightLayer.removeHighlight(id);
+    this.updateSidebarIndicators();
   }
 
   /** Remove all highlights. */
   removeAllHighlights(): void {
     this.highlights.clear();
     this.highlightLayer.clear();
+    this.updateSidebarIndicators();
   }
 
   /** Get all highlights. */
@@ -186,6 +215,29 @@ export class PdfViewer {
     }
   }
 
+  /** Set match count badges on sidebar thumbnails (manual override). */
+  setSidebarMatchCounts(counts: Map<number, number>): void {
+    this.sidebar?.updateMatchCounts(counts);
+  }
+
+  /** Clear match count badges from sidebar thumbnails. */
+  clearSidebarMatchCounts(): void {
+    this.sidebar?.clearMatchCounts();
+  }
+
+  /** Connect a sidebar container for page thumbnails. */
+  setSidebarContainer(container: HTMLElement): void {
+    this.sidebar = new Sidebar(container, {
+      onPageClick: (page) => this.goToPage(page),
+    });
+
+    // If PDF is already loaded, render thumbnails immediately
+    if (this.pdfDocument) {
+      this.sidebar.render(this.pdfDocument);
+      this.sidebar.setActivePage(this.currentPage);
+    }
+  }
+
   /** Register an event listener. */
   on(event: EventType, handler: EventListener): void {
     if (!this.eventListeners.has(event)) {
@@ -201,6 +253,8 @@ export class PdfViewer {
 
   /** Cleanup resources. */
   destroy(): void {
+    this.sidebar?.destroy();
+    this.sidebar = null;
     this.highlightLayer.destroy();
     this.pageRenderers.forEach((r) => r.destroy());
     this.pageRenderers.clear();
@@ -292,6 +346,24 @@ export class PdfViewer {
     }
 
     this.highlightLayer.render(pageHighlights);
+  }
+
+  private updateSidebarIndicators(): void {
+    if (!this.sidebar) return;
+
+    const pageInfo = new Map<number, PageHighlightInfo>();
+    for (const h of this.highlights.values()) {
+      const existing = pageInfo.get(h.page);
+      if (existing) {
+        existing.count++;
+        if (!existing.colors.includes(h.color)) {
+          existing.colors.push(h.color);
+        }
+      } else {
+        pageInfo.set(h.page, { colors: [h.color], count: 1 });
+      }
+    }
+    this.sidebar.updateHighlightIndicators(pageInfo);
   }
 
   private async rerenderAllPages(): Promise<void> {

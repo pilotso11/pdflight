@@ -7,20 +7,21 @@ import {
 } from '../../../src/utils/geometry';
 
 describe('rectFromTransform', () => {
-  it('computes rect from simple unrotated transform', () => {
-    // transform = [fontSize, 0, 0, fontSize, x, y]
+  it('computes rect from simple unrotated transform with descender extension', () => {
+    // transform = [fontSize, 0, 0, fontSize, x, y] where fontSize=12
+    // descenderDepth = 12 * 0.25 = 3
     const rect = rectFromTransform([12, 0, 0, 12, 100, 500], 60, 12);
     expect(rect.x).toBeCloseTo(100);
-    expect(rect.y).toBeCloseTo(500);
+    expect(rect.y).toBeCloseTo(500 - 3); // baseline - descender
     expect(rect.width).toBeCloseTo(60);
-    expect(rect.height).toBeCloseTo(12);
+    expect(rect.height).toBeCloseTo(12 + 3); // itemHeight + descender
   });
 
   it('handles scaled transform', () => {
-    // transform with scaleX=2 doubles the width
+    // transform with scaleX=24, scaleY=12: fontSize=12, descenderDepth=3
     const rect = rectFromTransform([24, 0, 0, 12, 100, 500], 60, 12);
     expect(rect.width).toBeCloseTo(120);
-    expect(rect.height).toBeCloseTo(12);
+    expect(rect.height).toBeCloseTo(12 + 3); // itemHeight + descender
   });
 });
 
