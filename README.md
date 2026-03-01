@@ -2,6 +2,8 @@
 
 PDF viewer library with precise text highlighting and smart search.
 
+![pdflight demo — search and highlight](docs/screenshot.png)
+
 ## Features
 
 - **Precise text highlighting** — overlays that accurately cover rendered text using font-metrics-based character positioning
