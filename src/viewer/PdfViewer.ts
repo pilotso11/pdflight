@@ -441,7 +441,16 @@ export class PdfViewer {
           // This is critical for correct highlight positioning at different zoom levels
           const pdfPageHeight = renderer?.getPdfPageHeight() ?? viewport?.height ?? 792;
 
-          const rects = computeHighlightRects(textIndex, highlight, pdfPageHeight, this.currentZoom);
+          // Get unrotated page dimensions for rotation transform
+          const pdfPage = renderer?.getPdfPage();
+          const unrotatedVp = pdfPage?.getViewport({ scale: 1, rotation: 0 });
+          const unrotatedWidth = unrotatedVp?.width ?? 0;
+          const unrotatedHeight = unrotatedVp?.height ?? 0;
+
+          const rects = computeHighlightRects(
+            textIndex, highlight, pdfPageHeight, this.currentZoom,
+            this.currentRotation, unrotatedWidth, unrotatedHeight,
+          );
           pageHighlights.push({ highlight, rects });
         }
       }

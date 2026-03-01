@@ -91,6 +91,32 @@ export function mergeAdjacentRects(rects: Rect[], tolerance: number): Rect[] {
 }
 
 /**
+ * Rotate a PDF-space rectangle to account for page rotation.
+ * Text content transforms are always in the original (unrotated) coordinate space,
+ * but the rendered viewport uses rotated coordinates. This bridges the gap.
+ *
+ * For rotation 90° CW: original x-axis → rotated y-axis (inverted), original y-axis → rotated x-axis.
+ * Width and height swap at 90° and 270°.
+ */
+export function rotatePdfRect(
+  rect: Rect,
+  rotation: number,
+  origWidth: number,
+  origHeight: number,
+): Rect {
+  switch (rotation) {
+    case 90:
+      return { x: rect.y, y: origWidth - rect.x - rect.width, width: rect.height, height: rect.width };
+    case 180:
+      return { x: origWidth - rect.x - rect.width, y: origHeight - rect.y - rect.height, width: rect.width, height: rect.height };
+    case 270:
+      return { x: origHeight - rect.y - rect.height, y: rect.x, width: rect.height, height: rect.width };
+    default:
+      return rect;
+  }
+}
+
+/**
  * Slice a rectangle horizontally by start and end fractions (0 to 1).
  * Used for partial-item highlights.
  */

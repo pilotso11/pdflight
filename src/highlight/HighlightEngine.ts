@@ -1,6 +1,6 @@
 import type { PageTextIndex } from '../types';
 import type { Highlight, HighlightRect } from './types';
-import { rectFromTransform, pdfRectToCssRect, mergeAdjacentRects, sliceRectHorizontal } from '../utils/geometry';
+import { rectFromTransform, rotatePdfRect, pdfRectToCssRect, mergeAdjacentRects, sliceRectHorizontal } from '../utils/geometry';
 
 interface ItemRange {
   itemIndex: number;
@@ -12,12 +12,19 @@ interface ItemRange {
  * Compute highlight rectangles for a highlight on a specific page.
  * Uses per-character width data from the TextIndex for accurate partial-item positioning.
  * Merges adjacent rectangles on the same line.
+ *
+ * When rotation is non-zero, PDF-space rects are rotated to match the viewport
+ * before converting to CSS coordinates. Partial-item slicing happens in the
+ * original (unrotated) coordinate space where text runs horizontally.
  */
 export function computeHighlightRects(
   pageIndex: PageTextIndex,
   highlight: Highlight,
   pageHeight: number,
   scale: number,
+  rotation: number = 0,
+  unrotatedPageWidth: number = 0,
+  unrotatedPageHeight: number = 0,
 ): HighlightRect[] {
   if (highlight.page !== pageIndex.pageNumber) {
     return [];
@@ -36,30 +43,31 @@ export function computeHighlightRects(
   for (const range of itemRanges) {
     const item = pageIndex.items[range.itemIndex];
     const itemRect = rectFromTransform(item.transform, item.width, item.height);
-    const cssRect = pdfRectToCssRect(itemRect, pageHeight, scale);
 
+    // For partial items, slice in unrotated PDF space (where text is horizontal)
+    let pdfRect: HighlightRect;
     if (range.startOffset === 0 && range.endOffset === item.str.length) {
-      // Full item highlight
-      rects.push(cssRect);
+      pdfRect = itemRect;
     } else {
-      // Partial item highlight — use charWidths for precision
       const totalWidth = sumWidths(item.charWidths);
 
-      // Fallback if charWidths is empty or zero (some PDFs don't provide this data)
       if (totalWidth === 0 || !item.charWidths || item.charWidths.length === 0) {
-        // Use uniform character spacing as fallback
         const charCount = item.str.length;
         const startFraction = range.startOffset / charCount;
         const endFraction = range.endOffset / charCount;
-        const partialRect = sliceRectHorizontal(cssRect, startFraction, endFraction);
-        rects.push(partialRect);
+        pdfRect = sliceRectHorizontal(itemRect, startFraction, endFraction);
       } else {
         const startFraction = sumWidths(item.charWidths, 0, range.startOffset) / totalWidth;
         const endFraction = sumWidths(item.charWidths, 0, range.endOffset) / totalWidth;
-        const partialRect = sliceRectHorizontal(cssRect, startFraction, endFraction);
-        rects.push(partialRect);
+        pdfRect = sliceRectHorizontal(itemRect, startFraction, endFraction);
       }
     }
+
+    // Rotate PDF rect to match the rotated viewport, then convert to CSS
+    const rotatedRect = rotation !== 0
+      ? rotatePdfRect(pdfRect, rotation, unrotatedPageWidth, unrotatedPageHeight)
+      : pdfRect;
+    rects.push(pdfRectToCssRect(rotatedRect, pageHeight, scale));
   }
 
   // Merge adjacent rects on the same line (within 2px tolerance)
