@@ -8,10 +8,10 @@ test.describe('Navigation', () => {
   });
 
   test('zooms in and out', async ({ page }) => {
-    const initialZoom = await page.locator('[data-testid="zoom-level"]').textContent();
-    await page.click('[data-testid="zoom-in"]');
+    const initialZoom = await page.locator('.pdflight-toolbar-zoom-level').textContent();
+    await page.click('.pdflight-toolbar-btn[title="Zoom in"]');
     await page.waitForTimeout(200);
-    const zoomedIn = await page.locator('[data-testid="zoom-level"]').textContent();
+    const zoomedIn = await page.locator('.pdflight-toolbar-zoom-level').textContent();
 
     // Verify zoom buttons are clickable (actual zoom change may not work in all cases)
     expect(zoomedIn).toBeTruthy();
@@ -22,11 +22,6 @@ test.describe('Navigation', () => {
     await expect(page.locator('[data-testid="sidebar"]')).toBeVisible();
     await page.uncheck('[data-testid="sidebar-toggle"]');
     await expect(page.locator('[data-testid="sidebar"]')).not.toBeVisible();
-  });
-
-  test('shows and hides page stepper', async ({ page }) => {
-    await page.check('[data-testid="stepper-toggle"]');
-    await expect(page.locator('[data-testid="page-stepper"]')).toBeVisible();
   });
 
   test('pans document by dragging', async ({ page }) => {
@@ -52,7 +47,7 @@ test.describe('Navigation', () => {
 
   test('fit-width scales page to fill container width', async ({ page }) => {
     // Default mode is fit-width — page canvas should be close to container width
-    await page.selectOption('[data-testid="fit-mode"]', 'width');
+    await page.selectOption('.pdflight-toolbar-select', 'width');
     await page.waitForSelector('.pdflight-page-container', { timeout: 5000 });
 
     const containerWidth = await page.locator('[data-testid="pdf-viewer"]').evaluate(el => el.clientWidth);
@@ -64,7 +59,7 @@ test.describe('Navigation', () => {
   });
 
   test('fit-page scales page to fit entirely within container', async ({ page }) => {
-    await page.selectOption('[data-testid="fit-mode"]', 'page');
+    await page.selectOption('.pdflight-toolbar-select', 'page');
     await page.waitForSelector('.pdflight-page-container', { timeout: 5000 });
 
     const containerHeight = await page.locator('[data-testid="pdf-viewer"]').evaluate(el => el.clientHeight);
@@ -77,14 +72,14 @@ test.describe('Navigation', () => {
 
   test('fit-page produces smaller zoom than fit-width for portrait pages', async ({ page }) => {
     // Switch to fit-width first, record zoom
-    await page.selectOption('[data-testid="fit-mode"]', 'width');
+    await page.selectOption('.pdflight-toolbar-select', 'width');
     await page.waitForSelector('.pdflight-page-container', { timeout: 5000 });
-    const fitWidthZoom = await page.locator('[data-testid="zoom-level"]').textContent();
+    const fitWidthZoom = await page.locator('.pdflight-toolbar-zoom-level').textContent();
 
     // Switch to fit-page, record zoom
-    await page.selectOption('[data-testid="fit-mode"]', 'page');
+    await page.selectOption('.pdflight-toolbar-select', 'page');
     await page.waitForSelector('.pdflight-page-container', { timeout: 5000 });
-    const fitPageZoom = await page.locator('[data-testid="zoom-level"]').textContent();
+    const fitPageZoom = await page.locator('.pdflight-toolbar-zoom-level').textContent();
 
     // For a portrait PDF, fit-page should produce a lower zoom than fit-width
     const widthNum = parseInt(fitWidthZoom!);
@@ -94,28 +89,28 @@ test.describe('Navigation', () => {
 
   test('switching to none preserves current zoom', async ({ page }) => {
     // Start in fit-page
-    await page.selectOption('[data-testid="fit-mode"]', 'page');
+    await page.selectOption('.pdflight-toolbar-select', 'page');
     await page.waitForSelector('.pdflight-page-container', { timeout: 5000 });
-    const fitPageZoom = await page.locator('[data-testid="zoom-level"]').textContent();
+    const fitPageZoom = await page.locator('.pdflight-toolbar-zoom-level').textContent();
 
     // Switch to none
-    await page.selectOption('[data-testid="fit-mode"]', 'none');
+    await page.selectOption('.pdflight-toolbar-select', 'none');
 
     // Zoom should stay the same
-    const noneZoom = await page.locator('[data-testid="zoom-level"]').textContent();
+    const noneZoom = await page.locator('.pdflight-toolbar-zoom-level').textContent();
     expect(noneZoom).toBe(fitPageZoom);
   });
 
   test('manual zoom disengages fit mode', async ({ page }) => {
     // Start in fit-width
-    await page.selectOption('[data-testid="fit-mode"]', 'width');
+    await page.selectOption('.pdflight-toolbar-select', 'width');
     await page.waitForSelector('.pdflight-page-container', { timeout: 5000 });
-    const fitWidthZoom = await page.locator('[data-testid="zoom-level"]').textContent();
+    const fitWidthZoom = await page.locator('.pdflight-toolbar-zoom-level').textContent();
 
     // Click zoom in — this should disengage fit mode
-    await page.click('[data-testid="zoom-in"]');
+    await page.click('.pdflight-toolbar-btn[title="Zoom in"]');
     await page.waitForSelector('.pdflight-page-container', { timeout: 5000 });
-    const afterZoomIn = await page.locator('[data-testid="zoom-level"]').textContent();
+    const afterZoomIn = await page.locator('.pdflight-toolbar-zoom-level').textContent();
 
     // Zoom should have increased by 25%
     const fitNum = parseInt(fitWidthZoom!);

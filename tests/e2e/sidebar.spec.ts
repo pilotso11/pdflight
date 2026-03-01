@@ -34,20 +34,18 @@ test.describe('Sidebar', () => {
   });
 
   test('navigates to page on thumbnail click', async ({ page }) => {
-    // Enable stepper to see page info
-    await page.check('[data-testid="stepper-toggle"]');
     await page.check('[data-testid="sidebar-toggle"]');
     await page.waitForSelector('[data-testid="thumbnails"] canvas', { timeout: 5000 });
 
     // Initial state: page 1
-    await expect(page.locator('[data-testid="page-info"]')).toHaveText('Page 1 of 4');
+    await expect(page.locator('.pdflight-toolbar-page-info')).toHaveText('Page 1 of 4');
 
     // Click the second thumbnail
     const secondThumbnail = page.locator('[data-testid="thumbnails"] canvas').nth(1);
     await secondThumbnail.click();
 
     // Wait for page to change
-    await expect(page.locator('[data-testid="page-info"]')).toHaveText('Page 2 of 4');
+    await expect(page.locator('.pdflight-toolbar-page-info')).toHaveText('Page 2 of 4');
   });
 
   test('highlights active page thumbnail', async ({ page }) => {

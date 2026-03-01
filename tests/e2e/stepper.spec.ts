@@ -5,33 +5,33 @@ test.describe('Page Stepper', () => {
     await page.goto('/');
     await page.selectOption('[data-testid="demo-pdf-select"]', 'file-sample_150kB.pdf');
     await page.waitForSelector('[data-testid="pdf-viewer"] canvas', { timeout: 10000 });
-    await page.check('[data-testid="stepper-toggle"]');
   });
 
   test('navigates to next page', async ({ page }) => {
-    // Verify next button exists and is clickable
-    const nextBtn = page.locator('[data-testid="next-page"]');
+    const nextBtn = page.locator('.pdflight-toolbar-btn[title="Next page"]');
     await expect(nextBtn).toBeVisible();
     await nextBtn.click();
-    // Note: Page navigation may not update UI - this tests button interaction
+    await expect(page.locator('.pdflight-toolbar-page-info')).toHaveText('Page 2 of 4');
   });
 
   test('navigates to previous page', async ({ page }) => {
-    // Verify prev button exists and is clickable
-    const prevBtn = page.locator('[data-testid="prev-page"]');
-    await expect(prevBtn).toBeVisible();
+    // Go to page 2 first
+    await page.click('.pdflight-toolbar-btn[title="Next page"]');
+    await expect(page.locator('.pdflight-toolbar-page-info')).toHaveText('Page 2 of 4');
+
+    // Go back
+    const prevBtn = page.locator('.pdflight-toolbar-btn[title="Previous page"]');
     await prevBtn.click();
-    // Note: Page navigation may not update UI - this tests button interaction
+    await expect(page.locator('.pdflight-toolbar-page-info')).toHaveText('Page 1 of 4');
   });
 
-  test('disables prev button on first page', async ({ page }) => {
-    // Verify prev button exists (disabling logic may not be implemented)
-    const prevBtn = page.locator('[data-testid="prev-page"]');
-    await expect(prevBtn).toBeVisible();
+  test('prev button stays on page 1 when already on first page', async ({ page }) => {
+    await page.click('.pdflight-toolbar-btn[title="Previous page"]');
+    await expect(page.locator('.pdflight-toolbar-page-info')).toHaveText('Page 1 of 4');
   });
 
   test('shows accurate page count', async ({ page }) => {
-    const pageInfo = await page.locator('[data-testid="page-info"]').textContent();
+    const pageInfo = await page.locator('.pdflight-toolbar-page-info').textContent();
     expect(pageInfo).toMatch(/Page \d+ of \d+/);
   });
 });
