@@ -40,6 +40,9 @@ export class PdfViewer {
   private highlights = new Map<string, Highlight>();
   private eventListeners = new Map<EventType, Set<EventListener>>();
   private sidebar: Sidebar | null = null;
+  private resizeObserver: ResizeObserver | null = null;
+  private unscaledPageWidth = 0;
+  private unscaledPageHeight = 0;
 
   constructor(container: HTMLElement, options: PdfViewerOptions = {}) {
     // Configure pdf.js worker (must be done before loading PDFs)
@@ -63,6 +66,14 @@ export class PdfViewer {
     this.fitMode = this.options.fitMode;
     this.currentZoom = this.options.initialZoom;
     this.highlightLayer.setTooltipContent(this.options.tooltipContent);
+
+    // Observe container resizes to reapply fit mode
+    this.resizeObserver = new ResizeObserver(() => {
+      if (this.fitMode !== 'none' && this.pdfDocument) {
+        this.applyFitMode();
+      }
+    });
+    this.resizeObserver.observe(this.container);
   }
 
   /** Load a PDF from URL or binary data. */
@@ -87,6 +98,18 @@ export class PdfViewer {
       this.pdfDocument = await loadingTask.promise;
       console.log('[PdfViewer] PDF loaded, pages:', this.pdfDocument.numPages);
       this.currentPage = this.options.initialPage;
+
+      // Cache unscaled page dimensions from first page for fit calculations
+      const firstPage = await this.pdfDocument.getPage(1);
+      const unscaledVp = firstPage.getViewport({ scale: 1 });
+      this.unscaledPageWidth = unscaledVp.width;
+      this.unscaledPageHeight = unscaledVp.height;
+
+      // Apply fit mode to compute initial zoom
+      if (this.fitMode !== 'none') {
+        this.applyFitMode();
+      }
+
       console.log('[PdfViewer] Calling renderCurrentPage for page:', this.currentPage);
       await this.renderCurrentPage();
       console.log('[PdfViewer] renderCurrentPage completed');
@@ -124,9 +147,10 @@ export class PdfViewer {
     return this.pdfDocument?.numPages ?? 0;
   }
 
-  /** Set zoom level. */
+  /** Set zoom level. Switches fit mode to 'none' since zoom is now manual. */
   setZoom(scale: number): void {
     if (scale === this.currentZoom) return;
+    this.fitMode = 'none';
     this.currentZoom = scale;
     this.rerenderAllPages().then(() => this.emit('zoomchange', scale));
   }
@@ -136,11 +160,16 @@ export class PdfViewer {
     return this.currentZoom;
   }
 
-  /** Set fit mode. */
+  /** Set fit mode. Recomputes zoom to match the container dimensions. */
   setFitMode(mode: 'width' | 'page' | 'none'): void {
     this.fitMode = mode;
-    // Fit mode logic would be implemented here based on container size
-    // For now, it's a placeholder for future enhancement
+    if (mode === 'none' || !this.pdfDocument) return;
+    this.applyFitMode();
+  }
+
+  /** Get current fit mode. */
+  getFitMode(): 'width' | 'page' | 'none' {
+    return this.fitMode;
   }
 
   /** Search for text across all pages. */
@@ -253,6 +282,8 @@ export class PdfViewer {
 
   /** Cleanup resources. */
   destroy(): void {
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
     this.sidebar?.destroy();
     this.sidebar = null;
     this.highlightLayer.destroy();
@@ -364,6 +395,42 @@ export class PdfViewer {
       }
     }
     this.sidebar.updateHighlightIndicators(pageInfo);
+  }
+
+  /**
+   * Compute and apply the zoom level for the current fit mode.
+   * Uses the container's client dimensions and the unscaled PDF page size.
+   * Padding (40px) accounts for the page container's auto-margin.
+   */
+  private applyFitMode(): void {
+    if (this.unscaledPageWidth === 0 || this.unscaledPageHeight === 0) return;
+
+    const containerWidth = this.container.clientWidth;
+    const containerHeight = this.container.clientHeight;
+    const padding = 40; // matches page container margin (20px each side)
+
+    let newZoom: number;
+    if (this.fitMode === 'width') {
+      newZoom = (containerWidth - padding) / this.unscaledPageWidth;
+    } else if (this.fitMode === 'page') {
+      const scaleW = (containerWidth - padding) / this.unscaledPageWidth;
+      const scaleH = (containerHeight - padding) / this.unscaledPageHeight;
+      newZoom = Math.min(scaleW, scaleH);
+    } else {
+      return;
+    }
+
+    // Clamp to reasonable range and avoid re-render for tiny changes
+    newZoom = Math.max(0.1, Math.min(newZoom, 10));
+    if (Math.abs(newZoom - this.currentZoom) < 0.001) return;
+
+    this.currentZoom = newZoom;
+    this.emit('zoomchange', this.currentZoom);
+
+    // Re-render if PDF is loaded and we have a rendered page
+    if (this.pdfDocument && this.pageRenderers.size > 0) {
+      this.rerenderAllPages();
+    }
   }
 
   private async rerenderAllPages(): Promise<void> {

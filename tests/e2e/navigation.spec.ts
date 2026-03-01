@@ -50,21 +50,76 @@ test.describe('Navigation', () => {
     expect(Math.abs(finalScrollX - initialScrollX) + Math.abs(finalScrollY - initialScrollY)).toBeGreaterThan(0);
   });
 
-  test('switches to fit-to-width mode', async ({ page }) => {
-    // Verify fit mode selector works (feature is placeholder but UI should respond)
+  test('fit-width scales page to fill container width', async ({ page }) => {
+    // Default mode is fit-width — page canvas should be close to container width
     await page.selectOption('[data-testid="fit-mode"]', 'width');
+    await page.waitForSelector('.pdflight-page-container', { timeout: 5000 });
 
-    // Verify selection was applied
-    const selectedValue = await page.locator('[data-testid="fit-mode"]').inputValue();
-    expect(selectedValue).toBe('width');
+    const containerWidth = await page.locator('[data-testid="pdf-viewer"]').evaluate(el => el.clientWidth);
+    const pageWidth = await page.locator('.pdflight-page-container').evaluate(el => el.clientWidth);
+
+    // Page width + padding (40px) should be close to container width
+    expect(pageWidth).toBeGreaterThan(containerWidth * 0.8);
+    expect(pageWidth).toBeLessThanOrEqual(containerWidth);
   });
 
-  test('switches to fit-to-page mode', async ({ page }) => {
-    // Verify fit mode selector works (feature is placeholder but UI should respond)
+  test('fit-page scales page to fit entirely within container', async ({ page }) => {
     await page.selectOption('[data-testid="fit-mode"]', 'page');
+    await page.waitForSelector('.pdflight-page-container', { timeout: 5000 });
 
-    // Verify selection was applied
-    const selectedValue = await page.locator('[data-testid="fit-mode"]').inputValue();
-    expect(selectedValue).toBe('page');
+    const containerHeight = await page.locator('[data-testid="pdf-viewer"]').evaluate(el => el.clientHeight);
+    const pageHeight = await page.locator('.pdflight-page-container').evaluate(el => el.clientHeight);
+
+    // In fit-page, the page height (+ margin) should not exceed container height
+    // Allow some tolerance for margin
+    expect(pageHeight).toBeLessThanOrEqual(containerHeight);
+  });
+
+  test('fit-page produces smaller zoom than fit-width for portrait pages', async ({ page }) => {
+    // Switch to fit-width first, record zoom
+    await page.selectOption('[data-testid="fit-mode"]', 'width');
+    await page.waitForSelector('.pdflight-page-container', { timeout: 5000 });
+    const fitWidthZoom = await page.locator('[data-testid="zoom-level"]').textContent();
+
+    // Switch to fit-page, record zoom
+    await page.selectOption('[data-testid="fit-mode"]', 'page');
+    await page.waitForSelector('.pdflight-page-container', { timeout: 5000 });
+    const fitPageZoom = await page.locator('[data-testid="zoom-level"]').textContent();
+
+    // For a portrait PDF, fit-page should produce a lower zoom than fit-width
+    const widthNum = parseInt(fitWidthZoom!);
+    const pageNum = parseInt(fitPageZoom!);
+    expect(pageNum).toBeLessThan(widthNum);
+  });
+
+  test('switching to none preserves current zoom', async ({ page }) => {
+    // Start in fit-page
+    await page.selectOption('[data-testid="fit-mode"]', 'page');
+    await page.waitForSelector('.pdflight-page-container', { timeout: 5000 });
+    const fitPageZoom = await page.locator('[data-testid="zoom-level"]').textContent();
+
+    // Switch to none
+    await page.selectOption('[data-testid="fit-mode"]', 'none');
+
+    // Zoom should stay the same
+    const noneZoom = await page.locator('[data-testid="zoom-level"]').textContent();
+    expect(noneZoom).toBe(fitPageZoom);
+  });
+
+  test('manual zoom disengages fit mode', async ({ page }) => {
+    // Start in fit-width
+    await page.selectOption('[data-testid="fit-mode"]', 'width');
+    await page.waitForSelector('.pdflight-page-container', { timeout: 5000 });
+    const fitWidthZoom = await page.locator('[data-testid="zoom-level"]').textContent();
+
+    // Click zoom in — this should disengage fit mode
+    await page.click('[data-testid="zoom-in"]');
+    await page.waitForSelector('.pdflight-page-container', { timeout: 5000 });
+    const afterZoomIn = await page.locator('[data-testid="zoom-level"]').textContent();
+
+    // Zoom should have increased by 25%
+    const fitNum = parseInt(fitWidthZoom!);
+    const afterNum = parseInt(afterZoomIn!);
+    expect(afterNum).toBe(fitNum + 25);
   });
 });
