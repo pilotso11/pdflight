@@ -29,6 +29,10 @@
     "typecheck": "tsc --noEmit",
     "preview": "vite build --config vite.config.demo.ts && vite preview --config vite.config.demo.ts"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pilotso11/pdflight.git"
+  },
   "license": "MIT",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
