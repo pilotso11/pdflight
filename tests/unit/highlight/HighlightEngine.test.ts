@@ -80,4 +80,11 @@ describe('computeHighlightRects', () => {
     const rects = computeHighlightRects(index, { page: 1, startChar: 0, endChar: 5, id: 'h1', color: 'yellow' }, 792, 1.0);
     expect(rects).toHaveLength(1);
   });
+
+  it('returns empty array for negative startChar', () => {
+    const items = [makeItem('Hello')];
+    const index = buildPageTextIndex(1, items);
+    const rects = computeHighlightRects(index, { page: 1, startChar: -1, endChar: 3, id: 'h1', color: 'yellow' }, 792, 1.0);
+    expect(rects).toHaveLength(0);
+  });
 });

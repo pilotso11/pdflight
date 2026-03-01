@@ -34,11 +34,11 @@ export function buildPageTextIndex(
 
     // Add separator space between items based on line position
     if (rawText.length > 0) {
-      const prevItem = findPrevNonEmpty(items, itemIdx);
+      const prev = findPrevNonEmpty(items, itemIdx);
 
-      if (prevItem !== null) {
+      if (prev !== null) {
         // Check if this is a hyphenated line break
-        const isHyphenBreak = prevItem.str.endsWith('-') && prevItem.hasEOL;
+        const isHyphenBreak = prev.item.str.endsWith('-') && prev.item.hasEOL;
 
         if (isHyphenBreak) {
           // Remove the trailing hyphen from rawText for rejoining
@@ -47,7 +47,7 @@ export function buildPageTextIndex(
         } else {
           // Check if items are on different lines (using y-coordinate from transform)
           // transform = [scaleX, skewY, skewX, scaleY, translateX, translateY]
-          const prevY = prevItem.transform[5];
+          const prevY = prev.item.transform[5];
           const currY = item.transform[5];
           const differentLine = Math.abs(prevY - currY) > 1; // Small tolerance for rounding
 
@@ -55,7 +55,7 @@ export function buildPageTextIndex(
             // Insert space separator for items on different lines
             rawText += ' ';
             // Map separator space to end of previous item
-            rawCharMap.push({ itemIndex: itemIdx - 1, charOffset: prevItem.str.length });
+            rawCharMap.push({ itemIndex: prev.index, charOffset: prev.item.str.length });
           }
           // If same line, don't insert space (items are adjacent)
         }
@@ -110,9 +110,9 @@ export function buildPageTextIndex(
   };
 }
 
-function findPrevNonEmpty(items: PdflightTextItem[], currentIdx: number): PdflightTextItem | null {
+function findPrevNonEmpty(items: PdflightTextItem[], currentIdx: number): { item: PdflightTextItem; index: number } | null {
   for (let i = currentIdx - 1; i >= 0; i--) {
-    if (items[i].str.length > 0) return items[i];
+    if (items[i].str.length > 0) return { item: items[i], index: i };
   }
   return null;
 }
