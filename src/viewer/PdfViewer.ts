@@ -34,6 +34,7 @@ export class PdfViewer {
   private currentPage = 1;
   private currentZoom = 1.0;
   private fitMode: 'width' | 'page' | 'none' = 'width';
+  private currentRotation = 0;
   private pageRenderers = new Map<number, PageRenderer>();
   private textIndices = new Map<number, PageTextIndex>();
   private highlightLayer = new HighlightLayer();
@@ -78,6 +79,8 @@ export class PdfViewer {
   /** Load a PDF from URL or binary data. */
   async load(source: string | ArrayBuffer | Uint8Array): Promise<void> {
     console.log('[PdfViewer] load() called with source:', typeof source);
+    this.currentRotation = 0;
+    this.pageDimensions.clear();
     try {
       let loadingTask: pdfjs.PDFDocumentLoadingTask;
 
@@ -100,7 +103,7 @@ export class PdfViewer {
 
       // Cache unscaled page dimensions from first page for fit calculations
       const firstPage = await this.pdfDocument.getPage(1);
-      const unscaledVp = firstPage.getViewport({ scale: 1 });
+      const unscaledVp = firstPage.getViewport({ scale: 1, rotation: this.currentRotation });
       this.pageDimensions.set(1, { width: unscaledVp.width, height: unscaledVp.height });
 
       // Apply fit mode to compute initial zoom
@@ -171,6 +174,26 @@ export class PdfViewer {
   /** Get current fit mode. */
   getFitMode(): 'width' | 'page' | 'none' {
     return this.fitMode;
+  }
+
+  /** Rotate the page by 90 or -90 degrees. */
+  rotate(degrees: 90 | -90): void {
+    this.currentRotation = ((this.currentRotation + degrees) % 360 + 360) % 360;
+    // Clear dimension cache since rotation changes effective dimensions
+    this.pageDimensions.clear();
+    this.renderCurrentPage().then(() => {
+      // Re-cache dimensions for current page and reapply fit
+      if (this.fitMode !== 'none') {
+        this.applyFitMode();
+      }
+      // this.sidebar?.setRotation(this.currentRotation); // Added in Task 5
+      this.emit('zoomchange', this.currentZoom);
+    });
+  }
+
+  /** Get current rotation in degrees (0, 90, 180, 270). */
+  getRotation(): number {
+    return this.currentRotation;
   }
 
   /** Search for text across all pages. */
@@ -310,7 +333,7 @@ export class PdfViewer {
       width: 0,
       height: 0,
       scale: this.currentZoom,
-    });
+    }, this.currentRotation);
     console.log('[PdfViewer] Calling renderer.render');
     await renderer.render(this.container, this.pdfDocument);
     console.log('[PdfViewer] renderer.render completed');
@@ -318,7 +341,7 @@ export class PdfViewer {
 
     // Cache page dimensions for fit mode (use unscaled PDF page dimensions)
     if (!this.pageDimensions.has(this.currentPage) && renderer.getPdfPage()) {
-      const unscaledVp = renderer.getPdfPage()!.getViewport({ scale: 1 });
+      const unscaledVp = renderer.getPdfPage()!.getViewport({ scale: 1, rotation: this.currentRotation });
       this.pageDimensions.set(this.currentPage, { width: unscaledVp.width, height: unscaledVp.height });
     }
 
@@ -348,7 +371,7 @@ export class PdfViewer {
           width: 0,
           height: 0,
           scale: this.currentZoom,
-        });
+        }, this.currentRotation);
         const tempContainer = document.createElement('div');
         tempContainer.style.cssText = 'position: absolute; visibility: hidden;';
         document.body.appendChild(tempContainer);
