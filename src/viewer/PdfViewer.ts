@@ -111,7 +111,7 @@ export class PdfViewer {
       }
 
       loadingTask.promise.then(
-        (doc) => console.log('[PdfViewer] Loading task promise resolved'),
+        (_doc) => console.log('[PdfViewer] Loading task promise resolved'),
         (err) => console.error('[PdfViewer] Loading task promise rejected:', err)
       );
 

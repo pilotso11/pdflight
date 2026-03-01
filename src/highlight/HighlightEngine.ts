@@ -75,23 +75,6 @@ export function computeHighlightRects(
   return mergeAdjacentRects(rects, 2 * scale);
 }
 
-/**
- * Add buffer/padding around highlight rects for better visual appearance.
- * Buffer is proportional to scale but kept small to avoid overlapping adjacent text.
- */
-function addBufferToRects(rects: HighlightRect[], scale: number): HighlightRect[] {
-  // Use smaller buffer: 2px scaled (approximately 0.15-0.2 char height)
-  const buffer = Math.max(1, 2 * scale);
-
-  return rects.map(rect => ({
-    ...rect,
-    x: Math.max(0, rect.x - buffer),
-    y: Math.max(0, rect.y - buffer),
-    width: rect.width + (buffer * 2),
-    height: rect.height + (buffer * 2),
-  }));
-}
-
 function mapCharRangeToItems(
   pageIndex: PageTextIndex,
   startChar: number,

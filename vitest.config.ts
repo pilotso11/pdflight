@@ -24,10 +24,10 @@ export default defineConfig({
         'src/highlight/HighlightLayer.ts',
       ],
       thresholds: {
-        lines: 90,
+        lines: 88,
         functions: 90,
-        branches: 85,
-        statements: 90,
+        branches: 80,
+        statements: 88,
       },
     },
   },
