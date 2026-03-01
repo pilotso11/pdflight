@@ -7,6 +7,7 @@ import { computeHighlightRects } from '../highlight/HighlightEngine';
 import { HighlightLayer } from '../highlight/HighlightLayer';
 import { PageRenderer } from './PageRenderer';
 import { Sidebar, type PageHighlightInfo } from './Sidebar';
+import { ViewerToolbar, resolveToolbarConfig, type ToolbarConfig } from './ViewerToolbar';
 
 export interface PdfViewerOptions {
   initialPage?: number;
@@ -17,6 +18,7 @@ export interface PdfViewerOptions {
   showSearchMatchCounts?: boolean;
   tooltipContent?: (highlight: Highlight) => string | HTMLElement;
   pageBufferSize?: number;
+  toolbar?: ToolbarConfig | boolean;
   onPageChange?: (page: number) => void;
   onZoomChange?: (scale: number) => void;
 }
@@ -29,7 +31,7 @@ type EventListener = (...args: unknown[]) => void;
  */
 export class PdfViewer {
   private container: HTMLElement;
-  private options: Omit<Required<PdfViewerOptions>, 'tooltipContent'> & { tooltipContent: ((highlight: Highlight) => string | HTMLElement) | null };
+  private options: Omit<Required<PdfViewerOptions>, 'tooltipContent' | 'toolbar'> & { tooltipContent: ((highlight: Highlight) => string | HTMLElement) | null };
   private pdfDocument: pdfjs.PDFDocumentProxy | null = null;
   private currentPage = 1;
   private currentZoom = 1.0;
@@ -41,6 +43,7 @@ export class PdfViewer {
   private highlights = new Map<string, Highlight>();
   private eventListeners = new Map<EventType, Set<EventListener>>();
   private sidebar: Sidebar | null = null;
+  private toolbar: ViewerToolbar | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private pageDimensions = new Map<number, { width: number; height: number }>();
 
@@ -74,6 +77,20 @@ export class PdfViewer {
       }
     });
     this.resizeObserver.observe(this.container);
+
+    // Create built-in toolbar if configured
+    const toolbarConfig = resolveToolbarConfig(options.toolbar);
+    if (toolbarConfig) {
+      this.toolbar = new ViewerToolbar(this.container, toolbarConfig, {
+        onPrevPage: () => this.goToPage(this.currentPage - 1),
+        onNextPage: () => this.goToPage(this.currentPage + 1),
+        onZoomIn: () => this.setZoom(this.currentZoom + 0.25),
+        onZoomOut: () => this.setZoom(Math.max(0.25, this.currentZoom - 0.25)),
+        onFitModeChange: (mode) => this.setFitMode(mode),
+        onRotateCW: () => this.rotate(90),
+        onRotateCCW: () => this.rotate(-90),
+      });
+    }
   }
 
   /** Load a PDF from URL or binary data. */
@@ -120,6 +137,11 @@ export class PdfViewer {
         await this.sidebar.render(this.pdfDocument);
         this.sidebar.setActivePage(this.currentPage);
       }
+
+      // Update toolbar state
+      this.toolbar?.updatePageInfo(this.currentPage, this.pdfDocument.numPages);
+      this.toolbar?.updateZoomLevel(this.currentZoom);
+      this.toolbar?.updateFitMode(this.fitMode);
     } catch (error) {
       console.error('[PdfViewer] Error in load():', error);
       throw error;
@@ -137,6 +159,7 @@ export class PdfViewer {
       }
       this.sidebar?.setActivePage(this.currentPage);
       this.sidebar?.scrollToActive();
+      this.toolbar?.updatePageInfo(this.currentPage, this.pdfDocument!.numPages);
       this.emit('pagechange', this.currentPage);
     });
   }
@@ -156,6 +179,8 @@ export class PdfViewer {
     if (scale === this.currentZoom) return;
     this.fitMode = 'none';
     this.currentZoom = scale;
+    this.toolbar?.updateZoomLevel(scale);
+    this.toolbar?.updateFitMode('none');
     this.rerenderAllPages().then(() => this.emit('zoomchange', scale));
   }
 
@@ -167,6 +192,7 @@ export class PdfViewer {
   /** Set fit mode. Recomputes zoom to match the container dimensions. */
   setFitMode(mode: 'width' | 'page' | 'none'): void {
     this.fitMode = mode;
+    this.toolbar?.updateFitMode(mode);
     if (mode === 'none' || !this.pdfDocument) return;
     this.applyFitMode();
   }
@@ -310,6 +336,8 @@ export class PdfViewer {
     this.resizeObserver = null;
     this.sidebar?.destroy();
     this.sidebar = null;
+    this.toolbar?.destroy();
+    this.toolbar = null;
     this.highlightLayer.destroy();
     this.pageRenderers.forEach((r) => r.destroy());
     this.pageRenderers.clear();
@@ -324,8 +352,12 @@ export class PdfViewer {
     if (!this.pdfDocument) return;
 
     console.log('[PdfViewer] renderCurrentPage: clearing container');
-    // Clear container
-    this.container.textContent = '';
+    // Remove only page containers, preserving the toolbar
+    for (const child of Array.from(this.container.children)) {
+      if (!child.classList.contains('pdflight-toolbar')) {
+        child.remove();
+      }
+    }
 
     console.log('[PdfViewer] Creating PageRenderer');
     const renderer = new PageRenderer(this.currentPage, {
@@ -338,6 +370,14 @@ export class PdfViewer {
     await renderer.render(this.container, this.pdfDocument);
     console.log('[PdfViewer] renderer.render completed');
     this.pageRenderers.set(this.currentPage, renderer);
+
+    // Ensure toolbar stays at the end (bottom) or start (top) of the container
+    const toolbarEl = this.container.querySelector('.pdflight-toolbar');
+    if (toolbarEl && !toolbarEl.classList.contains('pdflight-toolbar-top')) {
+      this.container.appendChild(toolbarEl);
+    } else if (toolbarEl?.classList.contains('pdflight-toolbar-top')) {
+      this.container.prepend(toolbarEl);
+    }
 
     // Cache page dimensions for fit mode (use unscaled PDF page dimensions)
     if (!this.pageDimensions.has(this.currentPage) && renderer.getPdfPage()) {
@@ -457,6 +497,7 @@ export class PdfViewer {
     if (Math.abs(newZoom - this.currentZoom) < 0.001) return;
 
     this.currentZoom = newZoom;
+    this.toolbar?.updateZoomLevel(this.currentZoom);
     this.emit('zoomchange', this.currentZoom);
 
     // Re-render if PDF is loaded and we have a rendered page
