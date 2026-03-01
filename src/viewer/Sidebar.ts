@@ -33,6 +33,7 @@ export class Sidebar {
   private pdfDocument: pdfjs.PDFDocumentProxy | null = null;
   private matchCounts = new Map<number, number>();
   private highlightInfo = new Map<number, PageHighlightInfo>();
+  private rotation = 0;
 
   constructor(container: HTMLElement, options: SidebarOptions = {}) {
     this.container = container;
@@ -50,7 +51,7 @@ export class Sidebar {
 
     // Get first page viewport to compute aspect ratio (most pages share the same ratio)
     const firstPage = await pdfDocument.getPage(1);
-    const defaultViewport = firstPage.getViewport({ scale: 1 });
+    const defaultViewport = firstPage.getViewport({ scale: 1, rotation: this.rotation });
     const defaultAspect = defaultViewport.height / defaultViewport.width;
 
     for (let i = 1; i <= numPages; i++) {
@@ -133,6 +134,29 @@ export class Sidebar {
     this.renderIndicators();
   }
 
+  /** Update rotation and re-render thumbnails. */
+  setRotation(rotation: number): void {
+    if (this.rotation === rotation) return;
+    this.rotation = rotation;
+    // Invalidate rendered thumbnails so they re-render with new rotation
+    this.rendered.clear();
+    // Remove existing canvases
+    for (const wrapper of this.wrappers) {
+      wrapper.querySelector('canvas')?.remove();
+    }
+    // Update wrapper dimensions for new rotation
+    if (this.pdfDocument) {
+      this.updateWrapperDimensions();
+    }
+    // Re-observe to trigger lazy rendering
+    if (this.observer) {
+      for (const wrapper of this.wrappers) {
+        this.observer.unobserve(wrapper);
+        this.observer.observe(wrapper);
+      }
+    }
+  }
+
   /** Cleanup resources. */
   destroy(): void {
     if (this.observer) {
@@ -194,14 +218,24 @@ export class Sidebar {
     }
   }
 
+  private async updateWrapperDimensions(): Promise<void> {
+    if (!this.pdfDocument) return;
+    const firstPage = await this.pdfDocument.getPage(1);
+    const vp = firstPage.getViewport({ scale: 1, rotation: this.rotation });
+    const aspect = vp.height / vp.width;
+    for (const wrapper of this.wrappers) {
+      wrapper.style.height = `${Math.round(THUMBNAIL_WIDTH * aspect)}px`;
+    }
+  }
+
   private async renderThumbnail(pageNum: number): Promise<void> {
     if (!this.pdfDocument || this.rendered.has(pageNum)) return;
     this.rendered.add(pageNum);
 
     const page = await this.pdfDocument.getPage(pageNum);
-    const unscaledViewport = page.getViewport({ scale: 1 });
+    const unscaledViewport = page.getViewport({ scale: 1, rotation: this.rotation });
     const scale = THUMBNAIL_WIDTH / unscaledViewport.width;
-    const viewport = page.getViewport({ scale });
+    const viewport = page.getViewport({ scale, rotation: this.rotation });
 
     const canvas = document.createElement('canvas');
     canvas.width = viewport.width;
