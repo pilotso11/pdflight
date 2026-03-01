@@ -41,8 +41,7 @@ export class PdfViewer {
   private eventListeners = new Map<EventType, Set<EventListener>>();
   private sidebar: Sidebar | null = null;
   private resizeObserver: ResizeObserver | null = null;
-  private unscaledPageWidth = 0;
-  private unscaledPageHeight = 0;
+  private pageDimensions = new Map<number, { width: number; height: number }>();
 
   constructor(container: HTMLElement, options: PdfViewerOptions = {}) {
     // Configure pdf.js worker (must be done before loading PDFs)
@@ -102,8 +101,7 @@ export class PdfViewer {
       // Cache unscaled page dimensions from first page for fit calculations
       const firstPage = await this.pdfDocument.getPage(1);
       const unscaledVp = firstPage.getViewport({ scale: 1 });
-      this.unscaledPageWidth = unscaledVp.width;
-      this.unscaledPageHeight = unscaledVp.height;
+      this.pageDimensions.set(1, { width: unscaledVp.width, height: unscaledVp.height });
 
       // Apply fit mode to compute initial zoom
       if (this.fitMode !== 'none') {
@@ -131,6 +129,9 @@ export class PdfViewer {
     const pageCount = this.pdfDocument.numPages;
     this.currentPage = Math.max(1, Math.min(page, pageCount));
     this.renderCurrentPage().then(() => {
+      if (this.fitMode !== 'none') {
+        this.applyFitMode();
+      }
       this.sidebar?.setActivePage(this.currentPage);
       this.sidebar?.scrollToActive();
       this.emit('pagechange', this.currentPage);
@@ -290,6 +291,7 @@ export class PdfViewer {
     this.pageRenderers.forEach((r) => r.destroy());
     this.pageRenderers.clear();
     this.textIndices.clear();
+    this.pageDimensions.clear();
     this.highlights.clear();
     this.eventListeners.clear();
     this.pdfDocument = null;
@@ -313,6 +315,12 @@ export class PdfViewer {
     await renderer.render(this.container, this.pdfDocument);
     console.log('[PdfViewer] renderer.render completed');
     this.pageRenderers.set(this.currentPage, renderer);
+
+    // Cache page dimensions for fit mode (use unscaled PDF page dimensions)
+    if (!this.pageDimensions.has(this.currentPage) && renderer.getPdfPage()) {
+      const unscaledVp = renderer.getPdfPage()!.getViewport({ scale: 1 });
+      this.pageDimensions.set(this.currentPage, { width: unscaledVp.width, height: unscaledVp.height });
+    }
 
     // Mount highlight layer to the page container (not main container)
     // This ensures highlights are positioned relative to the actual PDF page
@@ -403,7 +411,8 @@ export class PdfViewer {
    * Padding (40px) accounts for the page container's auto-margin.
    */
   private applyFitMode(): void {
-    if (this.unscaledPageWidth === 0 || this.unscaledPageHeight === 0) return;
+    const dims = this.pageDimensions.get(this.currentPage);
+    if (!dims) return;
 
     const containerWidth = this.container.clientWidth;
     const containerHeight = this.container.clientHeight;
@@ -411,10 +420,10 @@ export class PdfViewer {
 
     let newZoom: number;
     if (this.fitMode === 'width') {
-      newZoom = (containerWidth - padding) / this.unscaledPageWidth;
+      newZoom = (containerWidth - padding) / dims.width;
     } else if (this.fitMode === 'page') {
-      const scaleW = (containerWidth - padding) / this.unscaledPageWidth;
-      const scaleH = (containerHeight - padding) / this.unscaledPageHeight;
+      const scaleW = (containerWidth - padding) / dims.width;
+      const scaleH = (containerHeight - padding) / dims.height;
       newZoom = Math.min(scaleW, scaleH);
     } else {
       return;
