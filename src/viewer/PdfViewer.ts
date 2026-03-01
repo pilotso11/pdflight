@@ -156,18 +156,21 @@ export class PdfViewer {
     const pageCount = this.pdfDocument.numPages;
     this.currentPage = Math.max(1, Math.min(page, pageCount));
     const gen = ++this.renderGeneration;
-    this.renderCurrentPage().then(() => {
-      if (gen !== this.renderGeneration) return; // stale render, skip UI updates
-      if (this.fitMode !== 'none') {
-        this.applyFitMode();
+    (async () => {
+      try {
+        await this.renderCurrentPage();
+        if (gen !== this.renderGeneration) return; // stale render, skip UI updates
+        if (this.fitMode !== 'none') {
+          this.applyFitMode();
+        }
+        this.sidebar?.setActivePage(this.currentPage);
+        this.sidebar?.scrollToActive();
+        this.toolbar?.updatePageInfo(this.currentPage, this.pdfDocument!.numPages);
+        this.emit('pagechange', this.currentPage);
+      } catch (err) {
+        console.error('[PdfViewer] goToPage render failed:', err);
       }
-      this.sidebar?.setActivePage(this.currentPage);
-      this.sidebar?.scrollToActive();
-      this.toolbar?.updatePageInfo(this.currentPage, this.pdfDocument!.numPages);
-      this.emit('pagechange', this.currentPage);
-    }).catch((err) => {
-      console.error('[PdfViewer] goToPage render failed:', err);
-    });
+    })();
   }
 
   /** Get current page number. */
@@ -217,17 +220,20 @@ export class PdfViewer {
     // Clear dimension cache for this page since rotation changes effective dimensions
     this.pageDimensions.delete(page);
     const gen = ++this.renderGeneration;
-    this.renderCurrentPage().then(() => {
-      if (gen !== this.renderGeneration) return; // stale render, skip UI updates
-      // Re-cache dimensions for current page and reapply fit
-      if (this.fitMode !== 'none') {
-        this.applyFitMode();
+    (async () => {
+      try {
+        await this.renderCurrentPage();
+        if (gen !== this.renderGeneration) return; // stale render, skip UI updates
+        // Re-cache dimensions for current page and reapply fit
+        if (this.fitMode !== 'none') {
+          this.applyFitMode();
+        }
+        this.sidebar?.setPageRotation(page, newRotation);
+        this.emit('zoomchange', this.currentZoom);
+      } catch (err) {
+        console.error('[PdfViewer] rotate render failed:', err);
       }
-      this.sidebar?.setPageRotation(page, newRotation);
-      this.emit('zoomchange', this.currentZoom);
-    }).catch((err) => {
-      console.error('[PdfViewer] rotate render failed:', err);
-    });
+    })();
   }
 
   /** Get rotation for the current page in degrees (0, 90, 180, 270). */
