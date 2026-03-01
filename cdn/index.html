@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>pdflight CDN</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 40px 20px; max-width: 720px; margin: 0 auto; color: #24292f; }
+    h1 { margin-bottom: 8px; }
+    .tagline { color: #57606a; margin-bottom: 24px; }
+    h2 { margin-top: 32px; margin-bottom: 12px; font-size: 20px; }
+    a { color: #0969da; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    pre { background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 6px; overflow-x: auto; font-size: 13px; margin: 12px 0; }
+    code { font-family: 'SF Mono', Menlo, Consolas, monospace; }
+    .inline-code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
+    table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+    th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #d8dee4; }
+    th { font-weight: 600; }
+    .links { display: flex; gap: 16px; margin-top: 12px; flex-wrap: wrap; }
+    .links a { padding: 8px 16px; background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; }
+    .links a:hover { background: #eaeef2; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <h1>pdflight</h1>
+  <p class="tagline">PDF viewer library with precise text highlighting and smart search.</p>
+
+  <div class="links">
+    <a href="https://github.com/pilotso11/pdflight">GitHub Repository</a>
+    <a href="https://github.com/pilotso11/pdflight#readme">README &amp; Documentation</a>
+    <a href="https://github.com/pilotso11/pdflight/releases">Release History</a>
+    <a href="./example.html">Live Demo</a>
+  </div>
+
+  <h2>CDN URLs (latest)</h2>
+  <table>
+    <tr><th>Format</th><th>URL</th></tr>
+    <tr>
+      <td>IIFE (script tag)</td>
+      <td><a href="./pdflight.iife.js"><code>pdflight.iife.js</code></a></td>
+    </tr>
+    <tr>
+      <td>ESM (import)</td>
+      <td><a href="./pdflight.js"><code>pdflight.js</code></a></td>
+    </tr>
+  </table>
+
+  <h2>Script Tag</h2>
+  <pre><code>&lt;script src="https://pilotso11.github.io/pdflight/pdflight.iife.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  const viewer = new pdflight.PdfViewer(document.getElementById('viewer'), {
+    toolbar: true,
+  });
+  viewer.load('document.pdf');
+&lt;/script&gt;</code></pre>
+
+  <h2>ES Module</h2>
+  <pre><code>&lt;script type="module"&gt;
+  import { PdfViewer } from 'https://pilotso11.github.io/pdflight/pdflight.js';
+  const viewer = new PdfViewer(document.getElementById('viewer'), {
+    toolbar: true,
+  });
+  viewer.load('document.pdf');
+&lt;/script&gt;</code></pre>
+
+  <h2>Versioned URLs</h2>
+  <p>Pin to a specific version to avoid unexpected changes:</p>
+  <pre><code>https://pilotso11.github.io/pdflight/pdflight-0.1.0.iife.js
+https://pilotso11.github.io/pdflight/pdflight-0.1.0.js</code></pre>
+  <p>See the <a href="https://github.com/pilotso11/pdflight/releases">releases page</a> for all versions.</p>
+
+</body>
+</html>

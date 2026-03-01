@@ -50,8 +50,8 @@ jobs:
           cp dist-cdn/pdflight-${VERSION}.iife.js dist-cdn/pdflight.iife.js
           cp dist-cdn/pdflight-${VERSION}.js dist-cdn/pdflight.js
 
-      - name: Copy example page to dist-cdn
-        run: cp cdn/example.html dist-cdn/
+      - name: Copy pages to dist-cdn
+        run: cp cdn/index.html cdn/example.html dist-cdn/
 
       - uses: actions/configure-pages@v5
 
