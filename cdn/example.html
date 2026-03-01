@@ -62,9 +62,11 @@
   <!-- Load pdflight via script tag (IIFE build) -->
   <script src="./pdflight.iife.js"></script>
   <script>
+    // Expose viewer on window for programmatic access (e.g., E2E tests)
     const viewer = new pdflight.PdfViewer(document.getElementById('viewer'), {
       toolbar: true,
     });
+    window.viewer = viewer;
 
     const status = document.getElementById('status');
     let lastMatches = [];
