@@ -17,6 +17,10 @@ The text layer spans are positioned using `canvas.measureText()` to compute a `s
 
 Every library that measures DOM elements to position highlights — `getClientRects()`, `getBoundingClientRect()`, or CSS class injection on text layer spans — inherits this drift.
 
+### Errors compound
+
+The drift isn't a constant offset you can correct for. Each text span's error depends on the specific characters it contains, the font metrics the browser resolved, and the `scaleX` transform pdf.js computed. Across a line of text, these per-span errors accumulate: a 1px drift on the first span shifts every subsequent span's starting position. By the end of a long line — or across multiple lines in a dense paragraph — highlights can land several pixels away from the actual text. At higher zoom levels the errors scale proportionally, making the misalignment even more obvious. The result is highlights that look roughly right at a glance but fall apart under closer inspection, especially on documents with mixed fonts, small text, or tight line spacing.
+
 ## How pdflight positions highlights
 
 pdflight bypasses the text layer DOM entirely. It reads the same source data pdf.js uses to render canvas glyphs — the `getTextContent()` API — and computes highlight geometry directly from:
