@@ -17,6 +17,7 @@ export default [
         HTMLElement: 'readonly',
         HTMLCanvasElement: 'readonly',
         HTMLDivElement: 'readonly',
+        HTMLButtonElement: 'readonly',
         HTMLSelectElement: 'readonly',
         HTMLTextAreaElement: 'readonly',
         IntersectionObserver: 'readonly',
