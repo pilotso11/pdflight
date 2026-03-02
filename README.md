@@ -275,6 +275,71 @@ async function handleSearch() {
 </div>
 ```
 
+## Styling
+
+pdflight injects default styles for the toolbar and sidebar at runtime by appending a `<style>` tag to `<head>`. Because injection happens when the viewer is constructed, the library's styles may appear after your app's CSS in source order. To reliably override them, use a more specific selector (e.g. `.my-app .pdflight-thumbnail`) or load your overrides after the viewer is initialized.
+
+### Sidebar Configuration
+
+The sidebar accepts a config object for dimensional properties:
+
+```typescript
+const viewer = new PdfViewer(container, {
+  sidebar: {
+    thumbnailWidth: 180,  // Default: 150 (px) — drives canvas resolution + CSS width
+    gap: 12,              // Default: 8 (px) — margin between thumbnails
+    padding: 12,          // Default: 8 (px) — container padding
+  },
+});
+```
+
+Pass `sidebar: true` for defaults, or `sidebar: false` / omit to disable.
+
+### CSS Class Reference
+
+All library-created DOM elements use `.pdflight-*` classes:
+
+| Class | Description |
+|-------|-------------|
+| `.pdflight-page-container` | Wrapper around each rendered PDF page |
+| `.pdflight-toolbar` | Built-in toolbar bar |
+| `.pdflight-toolbar-top` | Added when toolbar position is `'top'` |
+| `.pdflight-toolbar-btn` | Toolbar buttons |
+| `.pdflight-toolbar-group` | Toolbar button group (with separator) |
+| `.pdflight-toolbar-select` | Toolbar dropdown selects |
+| `.pdflight-sidebar-container` | Added to the sidebar container element |
+| `.pdflight-thumbnail` | Individual thumbnail wrapper |
+| `.pdflight-thumbnail-active` | Active page thumbnail |
+| `.pdflight-thumbnail-label` | Page number label below thumbnail |
+| `.pdflight-thumbnail-edge-bar` | Colored left edge bar (highlight indicator) |
+| `.pdflight-thumbnail-badge` | Count badge (match/highlight counts) |
+| `.pdflight-highlight` | Highlight overlay div |
+| `.pdflight-tooltip` | Tooltip shown on highlight hover |
+
+### Overriding Default Styles
+
+The library injects its styles via a `<style>` element in `<head>`. Your CSS loads after and wins by specificity:
+
+```css
+/* Make active thumbnail border green instead of blue */
+.pdflight-thumbnail-active {
+  border-color: #28a745;
+  box-shadow: 0 1px 6px rgba(40, 167, 69, 0.3);
+}
+
+/* Larger page labels */
+.pdflight-thumbnail-label {
+  font-size: 13px;
+  padding: 4px 0;
+}
+
+/* Dark theme toolbar */
+.pdflight-toolbar {
+  background: rgba(30, 30, 30, 0.9);
+  color: #f0f0f0;
+}
+```
+
 ## How It Works
 
 ### Smart Search

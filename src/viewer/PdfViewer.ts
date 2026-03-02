@@ -7,14 +7,14 @@ import { searchPages } from '../search/SearchEngine';
 import { computeHighlightRects } from '../highlight/HighlightEngine';
 import { HighlightLayer } from '../highlight/HighlightLayer';
 import { PageRenderer } from './PageRenderer';
-import { Sidebar, type PageHighlightInfo } from './Sidebar';
+import { Sidebar, resolveSidebarConfig, type PageHighlightInfo, type SidebarConfig } from './Sidebar';
 import { ViewerToolbar, resolveToolbarConfig, type ToolbarConfig } from './ViewerToolbar';
 
 export interface PdfViewerOptions {
   initialPage?: number;
   initialZoom?: number;
   fitMode?: 'width' | 'page' | 'none';
-  sidebar?: boolean;
+  sidebar?: SidebarConfig | boolean;
   showSearchMatchCounts?: boolean;
   tooltipContent?: (highlight: Highlight) => string | HTMLElement;
   pageBufferSize?: number;
@@ -48,6 +48,7 @@ export class PdfViewer {
   private highlights = new Map<string, Highlight>();
   private eventListeners = new Map<EventType, Set<EventListener>>();
   private sidebar: Sidebar | null = null;
+  private sidebarConfig: SidebarConfig | null = null;
   private toolbar: ViewerToolbar | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private pageDimensions = new Map<number, { width: number; height: number }>();
@@ -84,6 +85,7 @@ export class PdfViewer {
       mode: options.activeMatchStyle?.mode ?? 'outline',
     };
     this.highlightLayer.setTooltipContent(this.options.tooltipContent);
+    this.sidebarConfig = resolveSidebarConfig(options.sidebar);
 
     // Observe container resizes to reapply fit mode
     this.resizeObserver = new ResizeObserver(() => {
@@ -392,6 +394,7 @@ export class PdfViewer {
   setSidebarContainer(container: HTMLElement): void {
     this.sidebar = new Sidebar(container, {
       onPageClick: (page) => this.goToPage(page),
+      config: this.sidebarConfig ?? undefined,
     });
 
     // If PDF is already loaded, render thumbnails immediately
