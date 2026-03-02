@@ -300,8 +300,9 @@ export class PdfViewer {
   /** Navigate to the previous search match (wraps around). */
   prevMatch(): SearchMatch | null {
     if (this.searchMatches.length === 0) return null;
-    this.currentMatchIndex =
-      (this.currentMatchIndex - 1 + this.searchMatches.length) % this.searchMatches.length;
+    this.currentMatchIndex = this.currentMatchIndex <= 0
+      ? this.searchMatches.length - 1
+      : this.currentMatchIndex - 1;
     return this.activateCurrentMatch();
   }
 

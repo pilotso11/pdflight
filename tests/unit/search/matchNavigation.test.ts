@@ -15,7 +15,7 @@ function nextIndex(current: number, total: number): number {
 
 function prevIndex(current: number, total: number): number {
   if (total === 0) return -1;
-  return (current - 1 + total) % total;
+  return current <= 0 ? total - 1 : current - 1;
 }
 
 describe('match navigation index arithmetic', () => {
@@ -59,9 +59,7 @@ describe('match navigation index arithmetic', () => {
   });
 
   it('first prevIndex from -1 lands on last', () => {
-    // When currentMatchIndex starts at -1, (-1 - 1 + 3) % 3 = 1
-    // This matches the behavior: prevMatch from fresh state goes to second-to-last
-    // In practice, the first call is usually nextMatch(), not prevMatch()
-    expect(prevIndex(-1, 3)).toBe(1);
+    // When currentMatchIndex starts at -1 (fresh state), prevMatch wraps to last match
+    expect(prevIndex(-1, 3)).toBe(2);
   });
 });

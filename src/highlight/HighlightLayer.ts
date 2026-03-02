@@ -86,29 +86,23 @@ export class HighlightLayer {
     el.className = 'pdflight-highlight';
     el.dataset.highlightId = highlight.id;
 
-    const isOutline = highlight.style === 'outline';
-    const baseStyle = `
-      position: absolute;
-      left: ${rect.x}px;
-      top: ${rect.y}px;
-      width: ${rect.width}px;
-      height: ${rect.height}px;
-      pointer-events: auto;
-      cursor: pointer;
-    `;
+    el.style.position = 'absolute';
+    el.style.left = `${rect.x}px`;
+    el.style.top = `${rect.y}px`;
+    el.style.width = `${rect.width}px`;
+    el.style.height = `${rect.height}px`;
+    el.style.pointerEvents = 'auto';
+    el.style.cursor = 'pointer';
 
-    if (isOutline) {
-      el.style.cssText = `${baseStyle}
-        border: 2px solid ${highlight.color};
-        background: transparent;
-        mix-blend-mode: normal;
-        box-sizing: border-box;
-      `;
+    if (highlight.style === 'outline') {
+      el.style.border = '2px solid';
+      el.style.borderColor = highlight.color;
+      el.style.background = 'transparent';
+      el.style.mixBlendMode = 'normal';
+      el.style.boxSizing = 'border-box';
     } else {
-      el.style.cssText = `${baseStyle}
-        background-color: ${highlight.color};
-        mix-blend-mode: multiply;
-      `;
+      el.style.backgroundColor = highlight.color;
+      el.style.mixBlendMode = 'multiply';
     }
 
     // Hover events for tooltip

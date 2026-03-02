@@ -84,6 +84,11 @@ body {
 }
 
 .control-section { display: flex; flex-direction: column; gap: 8px; }
+.control-section-doc { grid-area: doc; }
+.control-section-search { grid-area: search; }
+.control-section-config { grid-area: config; }
+.control-section-code { grid-area: code; }
+.control-section-serial { grid-area: serial; }
 
 .control-section h3 { margin: 0; font-size: 14px; }
 
