@@ -49,33 +49,90 @@ body {
 }
 
 .sidebar {
-  width: 200px;
   background: #f9f9f9;
   border-right: 1px solid #ddd;
   overflow-y: auto;
-  padding: 12px;
 }
 
 .sidebar.hidden { display: none; }
 
 .pdf-viewer {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
   background: #525659;
   padding: 20px;
 }
 
+.pdf-viewer .pdflight-toolbar:not(.pdflight-toolbar-top) {
+  margin-top: auto;
+}
+
 .controls-panel {
-  display: flex;
-  gap: 24px;
+  display: grid;
+  grid-template-areas:
+    "doc    search  config  code"
+    "serial serial  config  code";
+  grid-template-columns: auto auto 1fr auto;
+  gap: 12px 24px;
   padding: 12px;
   background: #f5f5f5;
   border-top: 1px solid #ddd;
 }
 
 .control-section { display: flex; flex-direction: column; gap: 8px; }
+.control-section-doc { grid-area: doc; }
+.control-section-search { grid-area: search; }
+.control-section-config { grid-area: config; }
+.control-section-code { grid-area: code; }
+.control-section-serial { grid-area: serial; }
 
 .control-section h3 { margin: 0; font-size: 14px; }
+
+.search-row {
+  display: flex;
+  gap: 6px;
+}
+
+.config-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.config-grid > label:first-child,
+.config-grid > label:nth-child(odd) {
+  font-weight: 500;
+  color: #555;
+}
+
+.config-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.config-checkboxes label {
+  font-weight: normal;
+  color: #333;
+  cursor: pointer;
+}
+
+.code-snippet {
+  margin: 0;
+  border-radius: 6px;
+  font-size: 12px;
+  max-width: 420px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.code-snippet code {
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+}
 
 .page-stepper {
   display: flex;
@@ -107,58 +164,5 @@ body {
   resize: none;
 }
 
-/* Thumbnail sidebar */
-.pdflight-thumbnail {
-  position: relative;
-  margin-bottom: 8px;
-  border: 2px solid #ddd;
-  border-radius: 3px;
-  overflow: hidden;
-  background: white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: border-color 0.15s;
-}
-
-.pdflight-thumbnail:hover {
-  border-color: #999;
-}
-
-.pdflight-thumbnail-active {
-  border-color: #007bff;
-  box-shadow: 0 1px 6px rgba(0, 123, 255, 0.3);
-}
-
-.pdflight-thumbnail-label {
-  text-align: center;
-  font-size: 11px;
-  color: #666;
-  padding: 2px 0;
-  background: #f5f5f5;
-}
-
-.pdflight-thumbnail-edge-bar {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  z-index: 1;
-  border-radius: 2px 0 0 2px;
-}
-
-.pdflight-thumbnail-badge {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  z-index: 1;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 9px;
-  font-size: 11px;
-  font-weight: 600;
-  color: white;
-  text-align: center;
-  line-height: 18px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-}
+/* Thumbnail sidebar — default styles are injected by the library.
+   Override .pdflight-thumbnail* classes here if you want custom visuals. */
