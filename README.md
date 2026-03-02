@@ -106,6 +106,12 @@ Unlike solutions that use DOM measurement, pdflight computes highlights from pdf
 4. Merges adjacent rectangles on the same line for efficient DOM rendering
 5. Survives zoom/pan/resize/rotation by recomputing from source data — no DOM measurement needed
 
+## Why pdflight?
+
+Most PDF highlighting libraries position overlays by measuring DOM elements. This breaks when the text layer drifts from the canvas — a [well-documented pdf.js problem](https://github.com/mozilla/pdf.js/issues/20017). pdflight computes geometry directly from glyph-level font metrics, bypassing the DOM entirely.
+
+See [docs/WHY.md](docs/WHY.md) for a detailed comparison with react-pdf-highlighter, ngx-extended-pdf-viewer, PSPDFKit, and others.
+
 ## License
 
 MIT
