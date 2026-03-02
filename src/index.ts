@@ -11,7 +11,7 @@ export { buildPageTextIndex } from './search/TextIndex';
 export { computeHighlightRects } from './highlight/HighlightEngine';
 
 export type { SearchMatch } from './search/types';
-export type { Highlight, HighlightRect } from './highlight/types';
+export type { Highlight, HighlightRect, ActiveMatchStyle } from './highlight/types';
 export type { PageTextIndex, PdflightTextItem, CharMapping } from './types';
 
 // Injected at build time by Vite from package.json
