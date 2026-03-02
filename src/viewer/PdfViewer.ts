@@ -15,7 +15,6 @@ export interface PdfViewerOptions {
   initialZoom?: number;
   fitMode?: 'width' | 'page' | 'none';
   sidebar?: boolean;
-  pageStepper?: boolean;
   showSearchMatchCounts?: boolean;
   tooltipContent?: (highlight: Highlight) => string | HTMLElement;
   pageBufferSize?: number;
@@ -32,7 +31,9 @@ type EventListener = (...args: unknown[]) => void;
  */
 export class PdfViewer {
   private container: HTMLElement;
-  private options: Omit<Required<PdfViewerOptions>, 'tooltipContent' | 'toolbar'> & { tooltipContent: ((highlight: Highlight) => string | HTMLElement) | null };
+  private options: Omit<Required<PdfViewerOptions>, 'tooltipContent' | 'toolbar'> & {
+    tooltipContent: ((highlight: Highlight) => string | HTMLElement) | null;
+  };
   private pdfDocument: pdfjs.PDFDocumentProxy | null = null;
   private currentPage = 1;
   private currentZoom = 1.0;
@@ -60,7 +61,6 @@ export class PdfViewer {
       initialZoom: options.initialZoom ?? 1.0,
       fitMode: options.fitMode ?? 'page',
       sidebar: options.sidebar ?? false,
-      pageStepper: options.pageStepper ?? false,
       showSearchMatchCounts: options.showSearchMatchCounts ?? false,
       tooltipContent: options.tooltipContent ?? null,
       pageBufferSize: options.pageBufferSize ?? 2,
