@@ -73,10 +73,10 @@ This index also handles:
 | **@react-pdf-viewer/highlight** | Percentage rects from DOM selection | No search engine | No | No | React | MIT |
 | **ngx-extended-pdf-viewer** | Delegates to pdf.js text layer | Via pdf.js only | Inherited | No | Angular | MIT |
 | **vue-pdf-embed / VuePDF** | Delegates to pdf.js text layer | Via pdf.js only | Inherited | No | Vue 3 | MIT |
-| **PSPDFKit / Nutrient** | Proprietary WASM engine, PDF-native coords | Yes | Yes | Proprietary | Agnostic | Commercial |
-| **Apryse / PDFTron** | Proprietary WASM engine, PDF-native coords | Yes | Yes | Proprietary | Agnostic | Commercial |
+| **Nutrient (PSPDFKit)** | Proprietary WASM engine, PDF-native coords | Yes | Yes | Proprietary | Agnostic | Commercial |
+| **Apryse (PDFTron)** | Proprietary WASM engine, PDF-native coords | Yes | Yes | Proprietary | Agnostic | Commercial |
 
 ## The short version
 
 - **vs. open-source alternatives**: pdflight is the only open-source library that computes highlight geometry from glyph-level data rather than DOM measurement. It's also the only one with a normalized text index that enables search across text fragmentation boundaries, and it works with any framework.
-- **vs. commercial SDKs** (PSPDFKit, Apryse): these solve the same accuracy problem by owning the entire PDF rendering engine (WASM-based, not pdf.js). They're more feature-complete but cost significant licensing fees. pdflight builds on top of pdf.js and is free.
+- **vs. commercial SDKs** (Nutrient, Apryse): these solve the same accuracy problem by owning the entire PDF rendering engine (WASM-based, not pdf.js). They're more feature-complete but cost significant licensing fees. pdflight builds on top of pdf.js and is free.
