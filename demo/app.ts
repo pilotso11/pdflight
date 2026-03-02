@@ -1,6 +1,7 @@
 import { PdfViewer, type PdfViewerOptions, type SearchMatch, type Highlight } from '../src/index';
-
-declare const Prism: { highlightElement: (el: Element) => void };
+import Prism from 'prismjs';
+import 'prismjs/components/prism-typescript';
+import 'prismjs/themes/prism-tomorrow.css';
 
 // DOM elements
 const fileInput = document.getElementById('file-input') as HTMLInputElement;

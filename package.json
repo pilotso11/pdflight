@@ -12,7 +12,9 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "vite build",
     "build:cdn": "vite build --config vite.config.cdn.ts",
@@ -37,6 +39,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.58.2",
+    "@types/prismjs": "^1.26.6",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.56.1",
     "@vitest/coverage-v8": "^4.0.18",
@@ -45,6 +48,7 @@
     "eslint": "^10.0.2",
     "jsdom": "^28.1.0",
     "pdf-lib": "^1.17.1",
+    "prismjs": "^1.30.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "vite-plugin-dts": "^4.5.4",
