@@ -1,4 +1,4 @@
-import { PdfViewer, type PdfViewerOptions, type SearchMatch, type Highlight } from '../src/index';
+import { PdfViewer, type PdfViewerOptions, type SearchMatch, type Highlight, type ActiveMatchStyle } from '../src/index';
 
 declare const Prism: { highlightElement: (el: Element) => void };
 
@@ -19,6 +19,9 @@ const importJson = document.getElementById('import-json') as HTMLButtonElement;
 const jsonIo = document.getElementById('json-io') as HTMLTextAreaElement;
 const applyConfigBtn = document.getElementById('apply-config') as HTMLButtonElement;
 const codeSnippetEl = document.getElementById('code-snippet')!.querySelector('code')!;
+const prevMatchBtn = document.getElementById('prev-match') as HTMLButtonElement;
+const nextMatchBtn = document.getElementById('next-match') as HTMLButtonElement;
+const matchCounter = document.getElementById('match-counter') as HTMLSpanElement;
 
 // Config DOM elements
 const cfgToolbar = document.getElementById('cfg-toolbar') as HTMLInputElement;
@@ -30,6 +33,9 @@ const cfgRotate = document.getElementById('cfg-rotate') as HTMLInputElement;
 const cfgFit = document.getElementById('cfg-fit') as HTMLInputElement;
 const cfgMatchCounts = document.getElementById('cfg-match-counts') as HTMLInputElement;
 const cfgTooltips = document.getElementById('cfg-tooltips') as HTMLInputElement;
+const cfgSearchNav = document.getElementById('cfg-search-nav') as HTMLInputElement;
+const cfgActiveMatchMode = document.getElementById('cfg-active-match-mode') as HTMLSelectElement;
+const cfgActiveMatchColor = document.getElementById('cfg-active-match-color') as HTMLInputElement;
 
 const pdfViewerContainer = document.getElementById('pdf-viewer')!;
 
@@ -48,9 +54,12 @@ function readConfig() {
     zoom: cfgZoom.checked,
     rotate: cfgRotate.checked,
     fit: cfgFit.checked,
+    searchNav: cfgSearchNav.checked,
     matchCounts: cfgMatchCounts.checked,
     tooltips: cfgTooltips.checked,
     thumbnails: sidebarToggle.checked,
+    activeMatchMode: cfgActiveMatchMode.value as 'highlight' | 'outline',
+    activeMatchColor: cfgActiveMatchColor.value,
   };
 }
 
@@ -64,10 +73,19 @@ function buildViewerOptions(): PdfViewerOptions {
           zoom: cfg.zoom,
           rotate: cfg.rotate,
           fit: cfg.fit,
+          searchNav: cfg.searchNav,
         }
       : false,
     fitMode: cfg.fitMode,
     showSearchMatchCounts: cfg.matchCounts,
+    activeMatchStyle: {
+      mode: cfg.activeMatchMode,
+      color: cfg.activeMatchColor,
+    },
+    onMatchChange: (match, index, total) => {
+      matchCounter.textContent = `${index + 1}/${total}`;
+      console.log(`[Demo] Match ${index + 1}/${total}: "${match.text}" on page ${match.page}`);
+    },
   };
   if (cfg.tooltips) {
     options.tooltipContent = (h: Highlight) => `Highlight: ${h.id}`;
@@ -87,6 +105,7 @@ function generateCodeSnippet(): string {
       `    zoom: ${cfg.zoom},`,
       `    rotate: ${cfg.rotate},`,
       `    fit: ${cfg.fit},`,
+      `    searchNav: ${cfg.searchNav},`,
       `  },`,
     );
   } else {
@@ -96,11 +115,19 @@ function generateCodeSnippet(): string {
   optionLines.push(
     `  fitMode: '${cfg.fitMode}',`,
     `  showSearchMatchCounts: ${cfg.matchCounts},`,
+    `  activeMatchStyle: {`,
+    `    mode: '${cfg.activeMatchMode}',`,
+    `    color: '${cfg.activeMatchColor}',`,
+    `  },`,
   );
 
   if (cfg.tooltips) {
     optionLines.push(`  tooltipContent: (h) => \`Highlight: \${h.id}\`,`);
   }
+
+  optionLines.push(`  onMatchChange: (match, index, total) => {`);
+  optionLines.push(`    console.log(\`Match \${index + 1}/\${total}: "\${match.text}"\`);`);
+  optionLines.push(`  },`);
 
   const lines = [
     `const viewer = new PdfViewer(container, {`,
@@ -185,6 +212,10 @@ function init() {
     updateCodeSnippet();
   });
 
+  // Match navigation
+  prevMatchBtn.addEventListener('click', () => viewer?.prevMatch());
+  nextMatchBtn.addEventListener('click', () => viewer?.nextMatch());
+
   // Highlights
   highlightAll.addEventListener('click', highlightAllResults);
   clearHighlights.addEventListener('click', () => {
@@ -213,7 +244,7 @@ function init() {
   });
 
   // Config controls — update code snippet on any change
-  const configInputs = [cfgToolbar, cfgToolbarPos, cfgFitMode, cfgStepper, cfgZoom, cfgRotate, cfgFit, cfgMatchCounts, cfgTooltips];
+  const configInputs = [cfgToolbar, cfgToolbarPos, cfgFitMode, cfgStepper, cfgZoom, cfgRotate, cfgFit, cfgSearchNav, cfgMatchCounts, cfgTooltips, cfgActiveMatchMode, cfgActiveMatchColor];
   for (const el of configInputs) {
     el.addEventListener('change', updateCodeSnippet);
   }
@@ -247,6 +278,16 @@ async function handleSearch() {
 
   currentSearchResults = await viewer.search(query);
   searchResults.textContent = `${currentSearchResults.length} match${currentSearchResults.length !== 1 ? 'es' : ''}`;
+
+  const hasResults = currentSearchResults.length > 0;
+  prevMatchBtn.disabled = !hasResults;
+  nextMatchBtn.disabled = !hasResults;
+
+  if (hasResults) {
+    viewer.nextMatch();
+  } else {
+    matchCounter.textContent = '0/0';
+  }
 }
 
 function highlightAllResults() {

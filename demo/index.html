@@ -14,7 +14,7 @@
     </header>
 
     <div id="viewer-container" class="viewer-container">
-      <aside id="sidebar" class="sidebar hidden" data-testid="sidebar">
+      <aside id="sidebar" class="sidebar" data-testid="sidebar">
         <div id="thumbnails" data-testid="thumbnails"></div>
       </aside>
 
@@ -38,6 +38,11 @@
         <div class="search-row">
           <input type="text" id="search-input" placeholder="Search..." data-testid="search-input">
           <button id="search-btn" data-testid="search-btn">Search</button>
+        </div>
+        <div class="search-row">
+          <button id="prev-match" data-testid="prev-match" disabled>&#9650; Prev</button>
+          <span id="match-counter" data-testid="match-counter">0/0</span>
+          <button id="next-match" data-testid="next-match" disabled>Next &#9660;</button>
         </div>
         <span id="search-results" data-testid="search-results"></span>
         <div class="search-row">
@@ -69,13 +74,23 @@
             <label><input type="checkbox" id="cfg-zoom" data-testid="cfg-zoom" checked> Zoom</label>
             <label><input type="checkbox" id="cfg-rotate" data-testid="cfg-rotate" checked> Rotate</label>
             <label><input type="checkbox" id="cfg-fit" data-testid="cfg-fit" checked> Fit</label>
+            <label><input type="checkbox" id="cfg-search-nav" data-testid="cfg-search-nav" checked> Search Nav</label>
           </div>
 
           <label>Options</label>
           <div class="config-checkboxes">
             <label><input type="checkbox" id="cfg-match-counts" data-testid="cfg-match-counts" checked> Show match counts</label>
             <label><input type="checkbox" id="cfg-tooltips" data-testid="cfg-tooltips" checked> Show tooltips</label>
-            <label><input type="checkbox" id="sidebar-toggle" data-testid="sidebar-toggle"> Thumbnails</label>
+            <label><input type="checkbox" id="sidebar-toggle" data-testid="sidebar-toggle" checked> Thumbnails</label>
+          </div>
+
+          <label for="cfg-active-match-mode">Active match style</label>
+          <div class="config-checkboxes">
+            <select id="cfg-active-match-mode" data-testid="cfg-active-match-mode">
+              <option value="outline">Outline</option>
+              <option value="highlight">Highlight</option>
+            </select>
+            <input type="color" id="cfg-active-match-color" data-testid="cfg-active-match-color" value="#ff6600">
           </div>
         </div>
         <button id="apply-config" class="btn" data-testid="apply-config">Apply</button>
