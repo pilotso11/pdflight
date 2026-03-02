@@ -49,6 +49,7 @@ Use pdflight directly in HTML without any build tools. The URLs below always poi
 <script>
   const viewer = new pdflight.PdfViewer(document.getElementById('viewer'), {
     toolbar: true,
+    sidebar: true,
   });
   viewer.load('document.pdf');
 </script>
@@ -61,6 +62,7 @@ Use pdflight directly in HTML without any build tools. The URLs below always poi
   import { PdfViewer } from 'https://pilotso11.github.io/pdflight/pdflight.js';
   const viewer = new PdfViewer(document.getElementById('viewer'), {
     toolbar: true,
+    sidebar: true,
   });
   viewer.load('document.pdf');
 </script>
