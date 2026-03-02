@@ -159,7 +159,8 @@ export default function PdfViewerApp({ url }: { url: string }) {
   const [query, setQuery] = useState('');
 
   useEffect(() => {
-    const viewer = new PdfViewer(containerRef.current!, { toolbar: true });
+    if (!containerRef.current) return;
+    const viewer = new PdfViewer(containerRef.current, { toolbar: true });
     viewerRef.current = viewer;
     viewer.load(url);
     return () => viewer.destroy();
@@ -201,7 +202,8 @@ const query = ref('');
 let viewer: PdfViewer | null = null;
 
 onMounted(() => {
-  viewer = new PdfViewer(containerRef.value!, { toolbar: true });
+  if (!containerRef.value) return;
+  viewer = new PdfViewer(containerRef.value, { toolbar: true });
   viewer.load(props.url);
 });
 

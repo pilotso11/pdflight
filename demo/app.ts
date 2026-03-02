@@ -1,4 +1,4 @@
-import { PdfViewer, type PdfViewerOptions, type SearchMatch, type Highlight, type ActiveMatchStyle } from '../src/index';
+import { PdfViewer, type PdfViewerOptions, type SearchMatch, type Highlight } from '../src/index';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-typescript';
 import 'prismjs/themes/prism-tomorrow.min.css';

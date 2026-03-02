@@ -314,6 +314,7 @@ export class PdfViewer {
     this.highlightLayer.removeHighlight(this.ACTIVE_MATCH_ID);
     this.toolbar?.updateMatchInfo(0, 0);
     this.sidebar?.clearMatchCounts();
+    this.pendingScrollHighlightId = null;
     this.renderHighlights();
   }
 

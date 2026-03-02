@@ -186,9 +186,8 @@ export class ViewerToolbar {
     if (this.matchInfoEl) {
       this.matchInfoEl.textContent = `Match ${current}/${total}`;
     }
-    const disabled = total === 0;
-    if (this.prevMatchBtn) this.prevMatchBtn.disabled = disabled;
-    if (this.nextMatchBtn) this.nextMatchBtn.disabled = disabled;
+    if (this.prevMatchBtn) this.prevMatchBtn.disabled = total === 0 || !this.callbacks.onPrevMatch;
+    if (this.nextMatchBtn) this.nextMatchBtn.disabled = total === 0 || !this.callbacks.onNextMatch;
   }
 
   /** Update the fit mode selector. */
