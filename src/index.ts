@@ -3,7 +3,7 @@
 
 export { PdfViewer, type PdfViewerOptions } from './viewer/PdfViewer';
 export { PageRenderer, type PageViewport } from './viewer/PageRenderer';
-export { Sidebar, type SidebarOptions, type PageHighlightInfo } from './viewer/Sidebar';
+export { Sidebar, resolveSidebarConfig, type SidebarConfig, type SidebarOptions, type PageHighlightInfo } from './viewer/Sidebar';
 export { ViewerToolbar, type ToolbarConfig, type ToolbarCallbacks, resolveToolbarConfig } from './viewer/ViewerToolbar';
 export { HighlightLayer } from './highlight/HighlightLayer';
 export { searchPages } from './search/SearchEngine';

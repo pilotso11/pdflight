@@ -35,6 +35,7 @@ const cfgFit = document.getElementById('cfg-fit') as HTMLInputElement;
 const cfgMatchCounts = document.getElementById('cfg-match-counts') as HTMLInputElement;
 const cfgTooltips = document.getElementById('cfg-tooltips') as HTMLInputElement;
 const cfgSearchNav = document.getElementById('cfg-search-nav') as HTMLInputElement;
+const cfgThumbnailWidth = document.getElementById('cfg-thumbnail-width') as HTMLInputElement;
 const cfgActiveMatchMode = document.getElementById('cfg-active-match-mode') as HTMLSelectElement;
 const cfgActiveMatchColor = document.getElementById('cfg-active-match-color') as HTMLInputElement;
 
@@ -59,6 +60,7 @@ function readConfig() {
     matchCounts: cfgMatchCounts.checked,
     tooltips: cfgTooltips.checked,
     thumbnails: sidebarToggle.checked,
+    thumbnailWidth: Number(cfgThumbnailWidth.value) || 150,
     activeMatchMode: cfgActiveMatchMode.value as 'highlight' | 'outline',
     activeMatchColor: cfgActiveMatchColor.value,
   };
@@ -77,6 +79,7 @@ function buildViewerOptions(): PdfViewerOptions {
           searchNav: cfg.searchNav,
         }
       : false,
+    sidebar: { thumbnailWidth: cfg.thumbnailWidth },
     fitMode: cfg.fitMode,
     showSearchMatchCounts: cfg.matchCounts,
     activeMatchStyle: {
@@ -137,6 +140,9 @@ function generateCodeSnippet(): string {
   ];
 
   if (cfg.thumbnails) {
+    if (cfg.thumbnailWidth !== 150) {
+      lines.push(`// sidebar config: { thumbnailWidth: ${cfg.thumbnailWidth} } passed in options`);
+    }
     lines.push(`viewer.setSidebarContainer(thumbnailsElement);`);
   }
 
@@ -154,6 +160,12 @@ function clearContainer(el: HTMLElement) {
   }
 }
 
+function updateSidebarWidth() {
+  const cfg = readConfig();
+  // thumbnail width + container padding (8px * 2) + thumbnail border (2px * 2) + scrollbar
+  sidebar.style.width = `${cfg.thumbnailWidth + 16 + 4 + 12}px`;
+}
+
 function createViewer() {
   viewer = new PdfViewer(pdfViewerContainer, buildViewerOptions());
 
@@ -161,6 +173,7 @@ function createViewer() {
   // visibility is controlled separately via the aside's hidden class
   viewer.setSidebarContainer(thumbnails);
   sidebar.classList.toggle('hidden', !sidebarToggle.checked);
+  updateSidebarWidth();
 
   (window as any).viewer = viewer;
 }
@@ -245,7 +258,7 @@ function init() {
   });
 
   // Config controls — update code snippet on any change
-  const configInputs = [cfgToolbar, cfgToolbarPos, cfgFitMode, cfgStepper, cfgZoom, cfgRotate, cfgFit, cfgSearchNav, cfgMatchCounts, cfgTooltips, cfgActiveMatchMode, cfgActiveMatchColor];
+  const configInputs = [cfgToolbar, cfgToolbarPos, cfgFitMode, cfgStepper, cfgZoom, cfgRotate, cfgFit, cfgSearchNav, cfgMatchCounts, cfgTooltips, cfgThumbnailWidth, cfgActiveMatchMode, cfgActiveMatchColor];
   for (const el of configInputs) {
     el.addEventListener('change', updateCodeSnippet);
   }

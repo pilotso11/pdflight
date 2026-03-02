@@ -1,11 +1,96 @@
 // Copyright (c) 2026 Seth Osher. MIT License.
 import * as pdfjs from 'pdfjs-dist';
 
-const THUMBNAIL_WIDTH = 150;
 const MATCH_COUNT_BADGE_COLOR = '#6b7280'; // neutral gray
+
+export interface SidebarConfig {
+  thumbnailWidth?: number;  // Default: 150 (px) — canvas render res + CSS width
+  gap?: number;             // Default: 8 (px) — margin between thumbnails
+  padding?: number;         // Default: 8 (px) — container padding
+}
+
+/** Resolve shorthand (boolean) to full config object, or null if disabled. */
+export function resolveSidebarConfig(
+  input: SidebarConfig | boolean | undefined,
+): SidebarConfig | null {
+  if (input === false || input === undefined) return null;
+  if (input === true)
+    return { thumbnailWidth: 150, gap: 8, padding: 8 };
+  return {
+    thumbnailWidth: input.thumbnailWidth ?? 150,
+    gap: input.gap ?? 8,
+    padding: input.padding ?? 8,
+  };
+}
 
 export interface SidebarOptions {
   onPageClick?: (page: number) => void;
+  config?: SidebarConfig;
+}
+
+const SIDEBAR_STYLES = `
+.pdflight-sidebar-container {
+  overflow-y: auto;
+}
+.pdflight-thumbnail {
+  position: relative;
+  border: 2px solid #ddd;
+  border-radius: 3px;
+  overflow: hidden;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: border-color 0.15s;
+  cursor: pointer;
+}
+.pdflight-thumbnail:hover {
+  border-color: #999;
+}
+.pdflight-thumbnail-active {
+  border-color: #007bff;
+  box-shadow: 0 1px 6px rgba(0, 123, 255, 0.3);
+}
+.pdflight-thumbnail-label {
+  text-align: center;
+  font-size: 11px;
+  color: #666;
+  padding: 2px 0;
+  background: #f5f5f5;
+}
+.pdflight-thumbnail-edge-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  z-index: 1;
+  border-radius: 2px 0 0 2px;
+}
+.pdflight-thumbnail-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 1;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  text-align: center;
+  line-height: 18px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+`;
+
+let sidebarStylesInjected = false;
+
+function injectSidebarStyles(): void {
+  if (sidebarStylesInjected) return;
+  const style = document.createElement('style');
+  style.textContent = SIDEBAR_STYLES;
+  document.head.appendChild(style);
+  sidebarStylesInjected = true;
 }
 
 export interface PageHighlightInfo {
@@ -27,6 +112,7 @@ function stripAlpha(color: string): string {
 export class Sidebar {
   private container: HTMLElement;
   private onPageClick: ((page: number) => void) | null;
+  private config: Required<SidebarConfig>;
   private observer: IntersectionObserver | null = null;
   private wrappers: HTMLElement[] = [];
   private rendered = new Set<number>();
@@ -37,8 +123,11 @@ export class Sidebar {
   private pageRotations = new Map<number, number>();
 
   constructor(container: HTMLElement, options: SidebarOptions = {}) {
+    injectSidebarStyles();
     this.container = container;
     this.onPageClick = options.onPageClick ?? null;
+    const resolved = resolveSidebarConfig(options.config ?? true);
+    this.config = resolved as Required<SidebarConfig>;
   }
 
   /** Create placeholders for all pages and start observing for lazy rendering. */
@@ -48,7 +137,12 @@ export class Sidebar {
     this.wrappers = [];
     this.rendered.clear();
 
+    // Apply container-level config
+    this.container.classList.add('pdflight-sidebar-container');
+    this.container.style.padding = `${this.config.padding}px`;
+
     const numPages = pdfDocument.numPages;
+    const thumbnailWidth = this.config.thumbnailWidth;
 
     // Get first page viewport to compute aspect ratio (most pages share the same ratio)
     const firstPage = await pdfDocument.getPage(1);
@@ -60,9 +154,9 @@ export class Sidebar {
       wrapper.className = 'pdflight-thumbnail';
       if (i === this.activePage) wrapper.classList.add('pdflight-thumbnail-active');
       wrapper.dataset.page = String(i);
-      wrapper.style.width = `${THUMBNAIL_WIDTH}px`;
-      wrapper.style.height = `${Math.round(THUMBNAIL_WIDTH * defaultAspect)}px`;
-      wrapper.style.cursor = 'pointer';
+      wrapper.style.width = `${thumbnailWidth}px`;
+      wrapper.style.height = `${Math.round(thumbnailWidth * defaultAspect)}px`;
+      wrapper.style.marginBottom = `${this.config.gap}px`;
 
       // Page number label
       const label = document.createElement('div');
@@ -77,7 +171,7 @@ export class Sidebar {
     }
 
     // Set up IntersectionObserver with rootMargin to buffer 2 thumbnail heights
-    const bufferPx = Math.round(THUMBNAIL_WIDTH * defaultAspect) * 2;
+    const bufferPx = Math.round(thumbnailWidth * defaultAspect) * 2;
     this.observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -224,7 +318,7 @@ export class Sidebar {
     const rotation = this.pageRotations.get(pageNum) ?? 0;
     const vp = page.getViewport({ scale: 1, rotation });
     const aspect = vp.height / vp.width;
-    wrapper.style.height = `${Math.round(THUMBNAIL_WIDTH * aspect)}px`;
+    wrapper.style.height = `${Math.round(this.config.thumbnailWidth * aspect)}px`;
   }
 
   private async renderThumbnail(pageNum: number): Promise<void> {
@@ -234,7 +328,7 @@ export class Sidebar {
     const page = await this.pdfDocument.getPage(pageNum);
     const rotation = this.pageRotations.get(pageNum) ?? 0;
     const unscaledViewport = page.getViewport({ scale: 1, rotation });
-    const scale = THUMBNAIL_WIDTH / unscaledViewport.width;
+    const scale = this.config.thumbnailWidth / unscaledViewport.width;
     const viewport = page.getViewport({ scale, rotation });
 
     const canvas = document.createElement('canvas');
