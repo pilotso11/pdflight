@@ -47,17 +47,27 @@ jobs:
       - name: Create unversioned copies (latest)
         run: |
           VERSION=${{ steps.version.outputs.version }}
-          cp dist-cdn/pdflight-${VERSION}.iife.js dist-cdn/pdflight.iife.js
-          cp dist-cdn/pdflight-${VERSION}.js dist-cdn/pdflight.js
+          cp "dist-cdn/pdflight-${VERSION}.iife.js" dist-cdn/pdflight.iife.js
+          cp "dist-cdn/pdflight-${VERSION}.js" dist-cdn/pdflight.js
 
-      - name: Copy pages to dist-cdn
-        run: cp cdn/index.html cdn/example.html dist-cdn/
+      - name: Build demo app
+        run: bun run build:demo -- --base /pdflight/
+
+      - name: Assemble deploy directory
+        run: |
+          # Copy CDN bundles into demo output
+          cp dist-cdn/*.js dist-demo/
+          # Preserve CDN landing page as cdn.html
+          cp cdn/index.html dist-demo/cdn.html
+          # Copy fixture PDFs so demo can load them
+          mkdir -p dist-demo/tests/fixtures
+          cp tests/fixtures/*.pdf dist-demo/tests/fixtures/
 
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist-cdn
+          path: dist-demo
 
       - id: deployment
         uses: actions/deploy-pages@v4
