@@ -12,7 +12,7 @@ export interface SidebarConfig {
 /** Resolve shorthand (boolean) to full config object, or null if disabled. */
 export function resolveSidebarConfig(
   input: SidebarConfig | boolean | undefined,
-): SidebarConfig | null {
+): Required<SidebarConfig> | null {
   if (input === false || input === undefined) return null;
   if (input === true)
     return { thumbnailWidth: 150, gap: 8, padding: 8 };
@@ -126,8 +126,7 @@ export class Sidebar {
     injectSidebarStyles();
     this.container = container;
     this.onPageClick = options.onPageClick ?? null;
-    const resolved = resolveSidebarConfig(options.config ?? true);
-    this.config = resolved as Required<SidebarConfig>;
+    this.config = resolveSidebarConfig(options.config ?? true) ?? { thumbnailWidth: 150, gap: 8, padding: 8 };
   }
 
   /** Create placeholders for all pages and start observing for lazy rendering. */
@@ -258,6 +257,8 @@ export class Sidebar {
       this.observer = null;
     }
     this.container.textContent = '';
+    this.container.classList.remove('pdflight-sidebar-container');
+    this.container.style.padding = '';
     this.wrappers = [];
     this.rendered.clear();
     this.matchCounts.clear();

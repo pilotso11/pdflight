@@ -162,8 +162,8 @@ function clearContainer(el: HTMLElement) {
 
 function updateSidebarWidth() {
   const cfg = readConfig();
-  // thumbnail width + container padding (8px * 2) + thumbnail border (2px * 2) + scrollbar
-  sidebar.style.width = `${cfg.thumbnailWidth + 16 + 4 + 12}px`;
+  // thumbnail width + container padding (8px * 2) + scrollbar
+  sidebar.style.width = `${cfg.thumbnailWidth + 16 + 12}px`;
 }
 
 function createViewer() {

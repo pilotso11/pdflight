@@ -277,7 +277,7 @@ async function handleSearch() {
 
 ## Styling
 
-pdflight injects default styles for the toolbar and sidebar so they work out of the box. Consumer CSS loads after and overrides naturally via standard CSS specificity.
+pdflight injects default styles for the toolbar and sidebar at runtime by appending a `<style>` tag to `<head>`. Because injection happens when the viewer is constructed, the library's styles may appear after your app's CSS in source order. To reliably override them, use a more specific selector (e.g. `.my-app .pdflight-thumbnail`) or load your overrides after the viewer is initialized.
 
 ### Sidebar Configuration
 
