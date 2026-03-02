@@ -1,8 +1,8 @@
 # Why pdflight?
 
-Every open-source JavaScript PDF highlighting library positions highlights the same way: by measuring the DOM text layer that pdf.js renders on top of the canvas. This works *most of the time*, but breaks in ways that are hard to debug and impossible to fix from the outside.
+We surveyed every JavaScript PDF highlighting library we could find — open-source and commercial. The commercial SDKs (PSPDFKit, Apryse) solve highlight accuracy by owning the entire rendering engine. Every open-source alternative positions highlights by measuring the DOM text layer that pdf.js renders on top of the canvas. This works *most of the time*, but breaks in ways that are hard to debug and impossible to fix from the outside.
 
-pdflight takes a different approach entirely.
+pdflight is the only non-commercial JavaScript library that produces accurate text highlights. It takes a different approach entirely.
 
 ## The problem with DOM-based highlighting
 
@@ -12,6 +12,8 @@ pdf.js renders PDF pages in two layers:
 2. **Text layer** — invisible `<span>` elements positioned over the canvas for text selection and accessibility
 
 The text layer spans are positioned using `canvas.measureText()` to compute a `scaleX` CSS transform. When the measurement font differs from the rendered font — which happens depending on OS, browser, zoom level, and locale — the spans drift away from the actual glyphs. This is a [well-documented](https://github.com/mozilla/pdf.js/issues/20017), [long-standing](https://github.com/mozilla/pdf.js/issues/7878) problem in pdf.js with [multiple](https://bugzilla.mozilla.org/show_bug.cgi?id=1815391) [open](https://bugzilla.mozilla.org/show_bug.cgi?id=1922063) bug reports spanning over a decade.
+
+![DOM-based highlighting vs pdflight comparison](screenshots/pdflight-comparison.png)
 
 Every library that measures DOM elements to position highlights — `getClientRects()`, `getBoundingClientRect()`, or CSS class injection on text layer spans — inherits this drift.
 
@@ -23,7 +25,23 @@ pdflight bypasses the text layer DOM entirely. It reads the same source data pdf
 - **Per-character widths** from pdf.js font objects, enabling precise partial-word highlighting
 - **Descender adjustment** (~25% below baseline) for characters like p, g, y, q
 
+![How pdflight computes highlight geometry from glyph data](screenshots/pdflight-glyph-geometry.png)
+
 The result: highlights land exactly where the text is rendered, regardless of OS font resolution, zoom level, or text layer drift.
+
+### Accurate at every zoom level
+
+Full page view — "Lorem" highlighted across different font sizes (title, subtitle, body):
+
+![Full page highlights](screenshots/full-page-highlights.png)
+
+Zoomed to 154% — the highlight precisely covers the text with no drift:
+
+![Zoomed highlight accuracy](screenshots/zoomed-highlight-accuracy.png)
+
+Overlapping highlights with color blending — "Lorem ips" in yellow, "ipsum" in blue. Where they overlap on "ips", the colors blend to green:
+
+![Overlapping highlights](screenshots/overlapping-highlights-zoomed.png)
 
 ## The text fragmentation problem
 
