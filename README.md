@@ -100,24 +100,48 @@ pdflight is framework-agnostic. Every integration follows the same pattern:
 
 ```html
 <div id="viewer"></div>
+<input id="search" type="text" placeholder="Search…" />
+<button id="go">Search</button>
+<button id="clear">Clear</button>
 
 <script type="module">
   import { PdfViewer } from 'https://pilotso11.github.io/pdflight/pdflight.js';
 
-  const viewer = new PdfViewer(document.getElementById('viewer'), {
+  const viewerEl = document.getElementById('viewer');
+  const searchInput = document.getElementById('search');
+  const goButton = document.getElementById('go');
+  const clearButton = document.getElementById('clear');
+
+  if (!viewerEl || !searchInput || !goButton || !clearButton) {
+    throw new Error('One or more required DOM elements are missing.');
+  }
+
+  const viewer = new PdfViewer(viewerEl, {
     toolbar: true,
+    sidebar: true,
   });
+
   await viewer.load('/sample.pdf');
 
-  // Search and highlight
-  const matches = await viewer.search('contract');
-  viewer.addHighlights(matches.map((m, i) => ({
-    id: `h-${i}`,
-    page: m.page,
-    startChar: m.startChar,
-    endChar: m.endChar,
-    color: 'rgba(255, 255, 0, 0.4)',
-  })));
+  goButton.addEventListener('click', async () => {
+    const query = searchInput.value.trim();
+    if (!query) return;
+
+    viewer.removeAllHighlights();
+    const matches = await viewer.search(query);
+    viewer.addHighlights(matches.map((m, i) => ({
+      id: `h-${i}`,
+      page: m.page,
+      startChar: m.startChar,
+      endChar: m.endChar,
+      color: 'rgba(255, 255, 0, 0.4)',
+    })));
+  });
+
+  clearButton.addEventListener('click', () => {
+    viewer.removeAllHighlights();
+    searchInput.value = '';
+  });
 </script>
 ```
 
