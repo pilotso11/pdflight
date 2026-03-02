@@ -2,7 +2,7 @@
 import * as pdfjs from 'pdfjs-dist';
 import type { PageTextIndex } from '../types';
 import type { SearchMatch } from '../search/types';
-import type { Highlight } from '../highlight/types';
+import type { Highlight, ActiveMatchStyle } from '../highlight/types';
 import { searchPages } from '../search/SearchEngine';
 import { computeHighlightRects } from '../highlight/HighlightEngine';
 import { HighlightLayer } from '../highlight/HighlightLayer';
@@ -15,13 +15,14 @@ export interface PdfViewerOptions {
   initialZoom?: number;
   fitMode?: 'width' | 'page' | 'none';
   sidebar?: boolean;
-  pageStepper?: boolean;
   showSearchMatchCounts?: boolean;
   tooltipContent?: (highlight: Highlight) => string | HTMLElement;
   pageBufferSize?: number;
   toolbar?: ToolbarConfig | boolean;
+  activeMatchStyle?: ActiveMatchStyle;
   onPageChange?: (page: number) => void;
   onZoomChange?: (scale: number) => void;
+  onMatchChange?: (match: SearchMatch, index: number, total: number) => void;
 }
 
 type EventType = 'pagechange' | 'zoomchange';
@@ -32,7 +33,10 @@ type EventListener = (...args: unknown[]) => void;
  */
 export class PdfViewer {
   private container: HTMLElement;
-  private options: Omit<Required<PdfViewerOptions>, 'tooltipContent' | 'toolbar'> & { tooltipContent: ((highlight: Highlight) => string | HTMLElement) | null };
+  private options: Omit<Required<PdfViewerOptions>, 'tooltipContent' | 'toolbar' | 'onMatchChange' | 'activeMatchStyle'> & {
+    tooltipContent: ((highlight: Highlight) => string | HTMLElement) | null;
+    onMatchChange: ((match: SearchMatch, index: number, total: number) => void) | null;
+  };
   private pdfDocument: pdfjs.PDFDocumentProxy | null = null;
   private currentPage = 1;
   private currentZoom = 1.0;
@@ -48,6 +52,11 @@ export class PdfViewer {
   private resizeObserver: ResizeObserver | null = null;
   private pageDimensions = new Map<number, { width: number; height: number }>();
   private renderGeneration = 0;
+  private searchMatches: SearchMatch[] = [];
+  private currentMatchIndex = -1;
+  private readonly ACTIVE_MATCH_ID = '__pdflight_active_match__';
+  private activeMatchStyle: Required<ActiveMatchStyle>;
+  private pendingScrollHighlightId: string | null = null;
 
   constructor(container: HTMLElement, options: PdfViewerOptions = {}) {
     // Configure pdf.js worker (must be done before loading PDFs)
@@ -60,16 +69,20 @@ export class PdfViewer {
       initialZoom: options.initialZoom ?? 1.0,
       fitMode: options.fitMode ?? 'page',
       sidebar: options.sidebar ?? false,
-      pageStepper: options.pageStepper ?? false,
       showSearchMatchCounts: options.showSearchMatchCounts ?? false,
       tooltipContent: options.tooltipContent ?? null,
       pageBufferSize: options.pageBufferSize ?? 2,
       onPageChange: options.onPageChange ?? (() => {}),
       onZoomChange: options.onZoomChange ?? (() => {}),
+      onMatchChange: options.onMatchChange ?? null,
     };
 
     this.fitMode = this.options.fitMode;
     this.currentZoom = this.options.initialZoom;
+    this.activeMatchStyle = {
+      color: options.activeMatchStyle?.color ?? '#ff6600',
+      mode: options.activeMatchStyle?.mode ?? 'outline',
+    };
     this.highlightLayer.setTooltipContent(this.options.tooltipContent);
 
     // Observe container resizes to reapply fit mode
@@ -91,6 +104,8 @@ export class PdfViewer {
         onFitModeChange: (mode) => this.setFitMode(mode),
         onRotateCW: () => this.rotate(90),
         onRotateCCW: () => this.rotate(-90),
+        onPrevMatch: () => this.prevMatch(),
+        onNextMatch: () => this.nextMatch(),
       });
     }
   }
@@ -256,6 +271,13 @@ export class PdfViewer {
     const indices = Array.from(this.textIndices.values()).sort((a, b) => a.pageNumber - b.pageNumber);
     const results = searchPages(indices, query);
 
+    // Store match state for navigation
+    this.searchMatches = results;
+    this.currentMatchIndex = -1;
+    this.highlights.delete(this.ACTIVE_MATCH_ID);
+    this.highlightLayer.removeHighlight(this.ACTIVE_MATCH_ID);
+    this.toolbar?.updateMatchInfo(0, results.length);
+
     // Auto-update sidebar match counts if flag is enabled
     if (this.options.showSearchMatchCounts && this.sidebar) {
       const counts = new Map<number, number>();
@@ -266,6 +288,42 @@ export class PdfViewer {
     }
 
     return results;
+  }
+
+  /** Navigate to the next search match (wraps around). */
+  nextMatch(): SearchMatch | null {
+    if (this.searchMatches.length === 0) return null;
+    this.currentMatchIndex = (this.currentMatchIndex + 1) % this.searchMatches.length;
+    return this.activateCurrentMatch();
+  }
+
+  /** Navigate to the previous search match (wraps around). */
+  prevMatch(): SearchMatch | null {
+    if (this.searchMatches.length === 0) return null;
+    this.currentMatchIndex =
+      (this.currentMatchIndex - 1 + this.searchMatches.length) % this.searchMatches.length;
+    return this.activateCurrentMatch();
+  }
+
+  /** Clear search state (matches, active highlight, toolbar info). */
+  clearSearch(): void {
+    this.searchMatches = [];
+    this.currentMatchIndex = -1;
+    this.highlights.delete(this.ACTIVE_MATCH_ID);
+    this.highlightLayer.removeHighlight(this.ACTIVE_MATCH_ID);
+    this.toolbar?.updateMatchInfo(0, 0);
+    this.sidebar?.clearMatchCounts();
+    this.renderHighlights();
+  }
+
+  /** Get current match index (0-based), or -1 if no active match. */
+  getCurrentMatchIndex(): number {
+    return this.currentMatchIndex;
+  }
+
+  /** Get total number of search matches. */
+  getMatchCount(): number {
+    return this.searchMatches.length;
   }
 
   /** Add a highlight. */
@@ -291,21 +349,21 @@ export class PdfViewer {
     this.updateSidebarIndicators();
   }
 
-  /** Remove all highlights. */
+  /** Remove all highlights (including active match highlight). */
   removeAllHighlights(): void {
     this.highlights.clear();
     this.highlightLayer.clear();
     this.updateSidebarIndicators();
   }
 
-  /** Get all highlights. */
+  /** Get all highlights (excludes internal active match highlight). */
   getHighlights(): Highlight[] {
-    return Array.from(this.highlights.values());
+    return Array.from(this.highlights.values()).filter((h) => h.id !== this.ACTIVE_MATCH_ID);
   }
 
-  /** Serialize highlights to JSON string. */
+  /** Serialize highlights to JSON string (excludes internal active match highlight). */
   serializeHighlights(): string {
-    return JSON.stringify(Array.from(this.highlights.values()));
+    return JSON.stringify(this.getHighlights());
   }
 
   /** Deserialize highlights from JSON string. */
@@ -369,8 +427,46 @@ export class PdfViewer {
     this.pageDimensions.clear();
     this.pageRotations.clear();
     this.highlights.clear();
+    this.searchMatches = [];
+    this.currentMatchIndex = -1;
     this.eventListeners.clear();
     this.pdfDocument = null;
+  }
+
+  private activateCurrentMatch(): SearchMatch {
+    const match = this.searchMatches[this.currentMatchIndex];
+    // Set active match as a highlight with configured style
+    this.highlights.set(this.ACTIVE_MATCH_ID, {
+      id: this.ACTIVE_MATCH_ID,
+      page: match.page,
+      startChar: match.startChar,
+      endChar: match.endChar,
+      color: this.activeMatchStyle.color,
+      style: this.activeMatchStyle.mode,
+    });
+
+    // Update toolbar display (1-based for users)
+    this.toolbar?.updateMatchInfo(this.currentMatchIndex + 1, this.searchMatches.length);
+
+    // Navigate to match page or re-render highlights on current page
+    if (match.page !== this.currentPage) {
+      // Cross-page: set pending scroll, goToPage will trigger it after render
+      this.pendingScrollHighlightId = this.ACTIVE_MATCH_ID;
+      this.goToPage(match.page);
+    } else {
+      this.renderHighlights();
+      this.scrollToHighlight(this.ACTIVE_MATCH_ID);
+    }
+
+    // Fire callback
+    this.options.onMatchChange?.(match, this.currentMatchIndex, this.searchMatches.length);
+
+    return match;
+  }
+
+  private scrollToHighlight(id: string): void {
+    const els = this.highlightLayer.getHighlightElements(id);
+    els?.[0]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   private async renderCurrentPage(): Promise<void> {
@@ -486,6 +582,13 @@ export class PdfViewer {
     }
 
     this.highlightLayer.render(pageHighlights);
+
+    // Handle pending scroll from cross-page match navigation
+    if (this.pendingScrollHighlightId) {
+      const id = this.pendingScrollHighlightId;
+      this.pendingScrollHighlightId = null;
+      this.scrollToHighlight(id);
+    }
   }
 
   private updateSidebarIndicators(): void {
@@ -493,6 +596,7 @@ export class PdfViewer {
 
     const pageInfo = new Map<number, PageHighlightInfo>();
     for (const h of this.highlights.values()) {
+      if (h.id === this.ACTIVE_MATCH_ID) continue;
       const existing = pageInfo.get(h.page);
       if (existing) {
         existing.count++;

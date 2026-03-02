@@ -10,7 +10,19 @@
   <div id="app">
     <header class="toolbar">
       <h1>pdflight Demo</h1>
-      <div class="toolbar-section">
+    </header>
+
+    <div id="viewer-container" class="viewer-container">
+      <aside id="sidebar" class="sidebar" data-testid="sidebar">
+        <div id="thumbnails" data-testid="thumbnails"></div>
+      </aside>
+
+      <main id="pdf-viewer" class="pdf-viewer" data-testid="pdf-viewer"></main>
+    </div>
+
+    <footer id="controls-panel" class="controls-panel">
+      <div class="control-section" style="grid-area: doc;">
+        <h3>Document</h3>
         <label for="file-input" class="btn">Open PDF</label>
         <input type="file" id="file-input" accept=".pdf" data-testid="file-input">
         <select id="demo-pdf" data-testid="demo-pdf-select">
@@ -20,36 +32,77 @@
           <option value="mixed-orientation.pdf">Mixed Orientation</option>
         </select>
       </div>
-      <div class="toolbar-section">
-        <input type="text" id="search-input" placeholder="Search..." data-testid="search-input">
-        <button id="search-btn" data-testid="search-btn">Search</button>
+      <div class="control-section" style="grid-area: search;">
+        <h3>Search &amp; Highlights</h3>
+        <div class="search-row">
+          <input type="text" id="search-input" placeholder="Search..." data-testid="search-input">
+          <button id="search-btn" data-testid="search-btn">Search</button>
+        </div>
+        <div class="search-row">
+          <button id="prev-match" data-testid="prev-match" disabled>&#9650; Prev</button>
+          <span id="match-counter" data-testid="match-counter">0/0</span>
+          <button id="next-match" data-testid="next-match" disabled>Next &#9660;</button>
+        </div>
         <span id="search-results" data-testid="search-results"></span>
+        <div class="search-row">
+          <button id="highlight-all" data-testid="highlight-all">Highlight All</button>
+          <button id="clear-highlights" data-testid="clear-highlights">Clear All</button>
+          <input type="color" id="highlight-color" value="#ffff00" data-testid="highlight-color">
+        </div>
       </div>
-      <div class="toolbar-section">
-        <label><input type="checkbox" id="sidebar-toggle" data-testid="sidebar-toggle"> Sidebar</label>
+      <div class="control-section" style="grid-area: config;">
+        <h3>Configuration</h3>
+        <div class="config-grid">
+          <label for="cfg-toolbar-pos">Toolbar position</label>
+          <select id="cfg-toolbar-pos" data-testid="cfg-toolbar-pos">
+            <option value="bottom">Bottom</option>
+            <option value="top">Top</option>
+          </select>
+
+          <label for="cfg-fit-mode">Initial fit mode</label>
+          <select id="cfg-fit-mode" data-testid="cfg-fit-mode">
+            <option value="page">Fit Page</option>
+            <option value="width">Fit Width</option>
+            <option value="none">None</option>
+          </select>
+
+          <label>Toolbar sections</label>
+          <div class="config-checkboxes">
+            <label><input type="checkbox" id="cfg-toolbar" data-testid="cfg-toolbar" checked> Show toolbar</label>
+            <label><input type="checkbox" id="cfg-stepper" data-testid="cfg-stepper" checked> Stepper</label>
+            <label><input type="checkbox" id="cfg-zoom" data-testid="cfg-zoom" checked> Zoom</label>
+            <label><input type="checkbox" id="cfg-rotate" data-testid="cfg-rotate" checked> Rotate</label>
+            <label><input type="checkbox" id="cfg-fit" data-testid="cfg-fit" checked> Fit</label>
+            <label><input type="checkbox" id="cfg-search-nav" data-testid="cfg-search-nav" checked> Search Nav</label>
+          </div>
+
+          <label>Options</label>
+          <div class="config-checkboxes">
+            <label><input type="checkbox" id="cfg-match-counts" data-testid="cfg-match-counts" checked> Show match counts</label>
+            <label><input type="checkbox" id="cfg-tooltips" data-testid="cfg-tooltips" checked> Show tooltips</label>
+            <label><input type="checkbox" id="sidebar-toggle" data-testid="sidebar-toggle" checked> Thumbnails</label>
+          </div>
+
+          <label for="cfg-active-match-mode">Active match style</label>
+          <div class="config-checkboxes">
+            <select id="cfg-active-match-mode" data-testid="cfg-active-match-mode">
+              <option value="outline">Outline</option>
+              <option value="highlight">Highlight</option>
+            </select>
+            <input type="color" id="cfg-active-match-color" data-testid="cfg-active-match-color" value="#ff6600">
+          </div>
+        </div>
+        <button id="apply-config" class="btn" data-testid="apply-config">Apply</button>
       </div>
-    </header>
-
-    <div id="viewer-container" class="viewer-container">
-      <aside id="sidebar" class="sidebar hidden" data-testid="sidebar">
-        <div id="thumbnails" data-testid="thumbnails"></div>
-      </aside>
-
-      <main id="pdf-viewer" class="pdf-viewer" data-testid="pdf-viewer"></main>
-    </div>
-
-    <footer id="controls-panel" class="controls-panel">
-      <div class="control-section">
-        <h3>Highlights</h3>
-        <button id="highlight-all" data-testid="highlight-all">Highlight All Search Results</button>
-        <button id="clear-highlights" data-testid="clear-highlights">Clear All</button>
-        <input type="color" id="highlight-color" value="#ffff00" data-testid="highlight-color">
+      <div class="control-section" style="grid-area: code;">
+        <h3>Code Snippet</h3>
+        <pre id="code-snippet" class="code-snippet" data-testid="code-snippet"><code class="language-typescript"></code></pre>
       </div>
-      <div class="control-section">
+      <div class="control-section" style="grid-area: serial;">
         <h3>Serialize</h3>
         <button id="export-json" data-testid="export-json">Export JSON</button>
         <button id="import-json" data-testid="import-json">Import JSON</button>
-        <textarea id="json-io" data-testid="json-io" readonly></textarea>
+        <textarea id="json-io" data-testid="json-io"></textarea>
       </div>
     </footer>
   </div>

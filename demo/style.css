@@ -60,14 +60,24 @@ body {
 
 .pdf-viewer {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
   background: #525659;
   padding: 20px;
 }
 
+.pdf-viewer .pdflight-toolbar:not(.pdflight-toolbar-top) {
+  margin-top: auto;
+}
+
 .controls-panel {
-  display: flex;
-  gap: 24px;
+  display: grid;
+  grid-template-areas:
+    "doc    search  config  code"
+    "serial serial  config  code";
+  grid-template-columns: auto auto 1fr auto;
+  gap: 12px 24px;
   padding: 12px;
   background: #f5f5f5;
   border-top: 1px solid #ddd;
@@ -76,6 +86,50 @@ body {
 .control-section { display: flex; flex-direction: column; gap: 8px; }
 
 .control-section h3 { margin: 0; font-size: 14px; }
+
+.search-row {
+  display: flex;
+  gap: 6px;
+}
+
+.config-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.config-grid > label:first-child,
+.config-grid > label:nth-child(odd) {
+  font-weight: 500;
+  color: #555;
+}
+
+.config-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.config-checkboxes label {
+  font-weight: normal;
+  color: #333;
+  cursor: pointer;
+}
+
+.code-snippet {
+  margin: 0;
+  border-radius: 6px;
+  font-size: 12px;
+  max-width: 420px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.code-snippet code {
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+}
 
 .page-stepper {
   display: flex;

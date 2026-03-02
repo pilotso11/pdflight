@@ -67,6 +67,11 @@ export class HighlightLayer {
     this.hideTooltip();
   }
 
+  /** Get the DOM elements for a highlight by ID. */
+  getHighlightElements(id: string): HTMLElement[] | undefined {
+    return this.highlightElements.get(id);
+  }
+
   /** Remove a specific highlight. */
   removeHighlight(id: string): void {
     const elements = this.highlightElements.get(id);
@@ -80,17 +85,31 @@ export class HighlightLayer {
     const el = document.createElement('div');
     el.className = 'pdflight-highlight';
     el.dataset.highlightId = highlight.id;
-    el.style.cssText = `
+
+    const isOutline = highlight.style === 'outline';
+    const baseStyle = `
       position: absolute;
       left: ${rect.x}px;
       top: ${rect.y}px;
       width: ${rect.width}px;
       height: ${rect.height}px;
-      background-color: ${highlight.color};
-      mix-blend-mode: multiply;
       pointer-events: auto;
       cursor: pointer;
     `;
+
+    if (isOutline) {
+      el.style.cssText = `${baseStyle}
+        border: 2px solid ${highlight.color};
+        background: transparent;
+        mix-blend-mode: normal;
+        box-sizing: border-box;
+      `;
+    } else {
+      el.style.cssText = `${baseStyle}
+        background-color: ${highlight.color};
+        mix-blend-mode: multiply;
+      `;
+    }
 
     // Hover events for tooltip
     el.addEventListener('mouseenter', () => this.showTooltip(highlight, rect));

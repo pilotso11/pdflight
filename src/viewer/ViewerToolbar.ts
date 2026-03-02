@@ -5,6 +5,7 @@ export interface ToolbarConfig {
   zoom?: boolean;
   rotate?: boolean;
   fit?: boolean;
+  searchNav?: boolean;
   position?: 'top' | 'bottom';
 }
 
@@ -16,6 +17,8 @@ export interface ToolbarCallbacks {
   onFitModeChange: (mode: 'width' | 'page' | 'none') => void;
   onRotateCW: () => void;
   onRotateCCW: () => void;
+  onPrevMatch?: () => void;
+  onNextMatch?: () => void;
 }
 
 /** Resolve shorthand (boolean) to full config object. */
@@ -24,12 +27,13 @@ export function resolveToolbarConfig(
 ): ToolbarConfig | null {
   if (input === false || input === undefined) return null;
   if (input === true)
-    return { stepper: true, zoom: true, rotate: true, fit: true, position: 'bottom' };
+    return { stepper: true, zoom: true, rotate: true, fit: true, searchNav: false, position: 'bottom' };
   return {
     stepper: input.stepper ?? true,
     zoom: input.zoom ?? true,
     rotate: input.rotate ?? true,
     fit: input.fit ?? true,
+    searchNav: input.searchNav ?? false,
     position: input.position ?? 'bottom',
   };
 }
@@ -102,7 +106,8 @@ const TOOLBAR_STYLES = `
 .pdflight-toolbar-btn:hover { background: rgba(0, 0, 0, 0.08); }
 .pdflight-toolbar-btn:active { background: rgba(0, 0, 0, 0.15); }
 .pdflight-toolbar-page-info,
-.pdflight-toolbar-zoom-level {
+.pdflight-toolbar-zoom-level,
+.pdflight-toolbar-match-info {
   min-width: 80px;
   text-align: center;
   font-variant-numeric: tabular-nums;
@@ -137,6 +142,9 @@ export class ViewerToolbar {
   private pageInfoEl: HTMLElement | null = null;
   private zoomLevelEl: HTMLElement | null = null;
   private fitSelectEl: HTMLSelectElement | null = null;
+  private matchInfoEl: HTMLElement | null = null;
+  private prevMatchBtn: HTMLButtonElement | null = null;
+  private nextMatchBtn: HTMLButtonElement | null = null;
 
   constructor(container: HTMLElement, config: ToolbarConfig, callbacks: ToolbarCallbacks) {
     injectStyles();
@@ -173,6 +181,16 @@ export class ViewerToolbar {
     }
   }
 
+  /** Update the match info display. */
+  updateMatchInfo(current: number, total: number): void {
+    if (this.matchInfoEl) {
+      this.matchInfoEl.textContent = `Match ${current}/${total}`;
+    }
+    const disabled = total === 0;
+    if (this.prevMatchBtn) this.prevMatchBtn.disabled = disabled;
+    if (this.nextMatchBtn) this.nextMatchBtn.disabled = disabled;
+  }
+
   /** Update the fit mode selector. */
   updateFitMode(mode: 'width' | 'page' | 'none'): void {
     if (this.fitSelectEl) {
@@ -190,6 +208,7 @@ export class ViewerToolbar {
     if (this.config.rotate) this.addRotate();
     if (this.config.zoom) this.addZoom();
     if (this.config.fit) this.addFitMode();
+    if (this.config.searchNav) this.addSearchNav();
   }
 
   private addStepper(): void {
@@ -215,18 +234,52 @@ export class ViewerToolbar {
     this.el.appendChild(group);
   }
 
+  private addSearchNav(): void {
+    const group = this.createGroup();
+
+    this.prevMatchBtn = document.createElement('button');
+    this.prevMatchBtn.className = 'pdflight-toolbar-btn';
+    this.prevMatchBtn.textContent = '\u25B2';
+    this.prevMatchBtn.title = 'Previous match';
+    this.prevMatchBtn.disabled = true;
+    this.prevMatchBtn.dataset.testid = 'prev-match-btn';
+    if (this.callbacks.onPrevMatch) {
+      this.prevMatchBtn.addEventListener('click', this.callbacks.onPrevMatch);
+    }
+
+    this.matchInfoEl = document.createElement('span');
+    this.matchInfoEl.className = 'pdflight-toolbar-match-info';
+    this.matchInfoEl.textContent = 'Match 0/0';
+    this.matchInfoEl.dataset.testid = 'match-info';
+
+    this.nextMatchBtn = document.createElement('button');
+    this.nextMatchBtn.className = 'pdflight-toolbar-btn';
+    this.nextMatchBtn.textContent = '\u25BC';
+    this.nextMatchBtn.title = 'Next match';
+    this.nextMatchBtn.disabled = true;
+    this.nextMatchBtn.dataset.testid = 'next-match-btn';
+    if (this.callbacks.onNextMatch) {
+      this.nextMatchBtn.addEventListener('click', this.callbacks.onNextMatch);
+    }
+
+    group.append(this.prevMatchBtn, this.matchInfoEl, this.nextMatchBtn);
+    this.el.appendChild(group);
+  }
+
   private addRotate(): void {
     const group = this.createGroup();
 
     const ccw = document.createElement('button');
     ccw.className = 'pdflight-toolbar-btn';
     ccw.textContent = '\u21BA';
+    ccw.style.fontSize = '20px';
     ccw.title = 'Rotate counterclockwise';
     ccw.addEventListener('click', this.callbacks.onRotateCCW);
 
     const cw = document.createElement('button');
     cw.className = 'pdflight-toolbar-btn';
     cw.textContent = '\u21BB';
+    cw.style.fontSize = '20px';
     cw.title = 'Rotate clockwise';
     cw.addEventListener('click', this.callbacks.onRotateCW);
 

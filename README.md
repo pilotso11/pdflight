@@ -8,7 +8,7 @@ PDF viewer library with precise text highlighting and smart search.
 
 - **Precise text highlighting** — overlays that accurately cover rendered text using font-metrics-based character positioning
 - **Smart search** — handles subscripts, superscripts, hyphenated words, cross-column text, and fragmented text spans
-- **Framework-agnostic** — vanilla TypeScript, works with any framework
+- **Framework-agnostic** — vanilla TypeScript, works with any framework ([examples](#framework-examples))
 - **Bundled pdf.js** — includes pdf.js as a direct dependency, no peer deps
 
 ## Install
@@ -49,6 +49,7 @@ Use pdflight directly in HTML without any build tools. The URLs below always poi
 <script>
   const viewer = new pdflight.PdfViewer(document.getElementById('viewer'), {
     toolbar: true,
+    sidebar: true,
   });
   viewer.load('document.pdf');
 </script>
@@ -61,6 +62,7 @@ Use pdflight directly in HTML without any build tools. The URLs below always poi
   import { PdfViewer } from 'https://pilotso11.github.io/pdflight/pdflight.js';
   const viewer = new PdfViewer(document.getElementById('viewer'), {
     toolbar: true,
+    sidebar: true,
   });
   viewer.load('document.pdf');
 </script>
@@ -86,6 +88,189 @@ bun run lint         # ESLint check
 bun run typecheck    # TypeScript type checking
 bun run build:cdn    # Build self-contained CDN bundles (IIFE + ESM)
 bun run test:e2e     # Run Playwright browser tests
+```
+
+## Framework Examples
+
+pdflight is framework-agnostic. Every integration follows the same pattern:
+
+1. **Mount** — pass a container DOM element to `new PdfViewer(element, options)`
+2. **Use** — call `viewer.load()`, `viewer.search()`, `viewer.addHighlights()` etc.
+3. **Cleanup** — call `viewer.destroy()` when the component unmounts
+
+### Vanilla JS
+
+```html
+<div id="viewer"></div>
+<input id="search" type="text" placeholder="Search…" />
+<button id="go">Search</button>
+<button id="clear">Clear</button>
+
+<script type="module">
+  import { PdfViewer } from 'https://pilotso11.github.io/pdflight/pdflight.js';
+
+  const viewerEl = document.getElementById('viewer');
+  const searchInput = document.getElementById('search');
+  const goButton = document.getElementById('go');
+  const clearButton = document.getElementById('clear');
+
+  if (!viewerEl || !searchInput || !goButton || !clearButton) {
+    throw new Error('One or more required DOM elements are missing.');
+  }
+
+  const viewer = new PdfViewer(viewerEl, {
+    toolbar: true,
+    sidebar: true,
+  });
+
+  await viewer.load('/sample.pdf');
+
+  goButton.addEventListener('click', async () => {
+    const query = searchInput.value.trim();
+    if (!query) return;
+
+    viewer.removeAllHighlights();
+    const matches = await viewer.search(query);
+    viewer.addHighlights(matches.map((m, i) => ({
+      id: `h-${i}`,
+      page: m.page,
+      startChar: m.startChar,
+      endChar: m.endChar,
+      color: 'rgba(255, 255, 0, 0.4)',
+    })));
+  });
+
+  clearButton.addEventListener('click', () => {
+    viewer.removeAllHighlights();
+    searchInput.value = '';
+  });
+</script>
+```
+
+### React
+
+```tsx
+import { useRef, useEffect, useState, useCallback } from 'react';
+import { PdfViewer } from '@pilotso11/pdflight';
+
+export default function PdfViewerApp({ url }: { url: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const viewerRef = useRef<PdfViewer | null>(null);
+  const [query, setQuery] = useState('');
+
+  useEffect(() => {
+    const viewer = new PdfViewer(containerRef.current!, { toolbar: true });
+    viewerRef.current = viewer;
+    viewer.load(url);
+    return () => viewer.destroy();
+  }, [url]);
+
+  const handleSearch = useCallback(async () => {
+    const viewer = viewerRef.current;
+    if (!viewer || !query.trim()) return;
+    viewer.removeAllHighlights();
+    const matches = await viewer.search(query);
+    viewer.addHighlights(matches.map((m, i) => ({
+      id: `h-${i}`, page: m.page,
+      startChar: m.startChar, endChar: m.endChar,
+      color: 'rgba(255, 255, 0, 0.4)',
+    })));
+  }, [query]);
+
+  return (
+    <div>
+      <input value={query} onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && handleSearch()} placeholder="Search..." />
+      <button onClick={handleSearch}>Search</button>
+      <div ref={containerRef} style={{ width: '100%', height: 'calc(100vh - 48px)' }} />
+    </div>
+  );
+}
+```
+
+### Vue 3
+
+```vue
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue';
+import { PdfViewer } from '@pilotso11/pdflight';
+
+const props = defineProps<{ url: string }>();
+const containerRef = ref<HTMLDivElement>();
+const query = ref('');
+let viewer: PdfViewer | null = null;
+
+onMounted(() => {
+  viewer = new PdfViewer(containerRef.value!, { toolbar: true });
+  viewer.load(props.url);
+});
+
+onUnmounted(() => {
+  viewer?.destroy();
+  viewer = null;
+});
+
+async function handleSearch() {
+  if (!viewer || !query.value.trim()) return;
+  viewer.removeAllHighlights();
+  const matches = await viewer.search(query.value);
+  viewer.addHighlights(matches.map((m, i) => ({
+    id: `h-${i}`, page: m.page,
+    startChar: m.startChar, endChar: m.endChar,
+    color: 'rgba(255, 255, 0, 0.4)',
+  })));
+}
+</script>
+
+<template>
+  <div>
+    <input v-model="query" @keydown.enter="handleSearch" placeholder="Search..." />
+    <button @click="handleSearch">Search</button>
+    <div ref="containerRef" style="width: 100%; height: calc(100vh - 48px)" />
+  </div>
+</template>
+```
+
+### Svelte
+
+```svelte
+<script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
+  import { PdfViewer } from '@pilotso11/pdflight';
+
+  export let url: string;
+  let container: HTMLDivElement;
+  let viewer: PdfViewer | null = null;
+  let query = '';
+
+  onMount(() => {
+    viewer = new PdfViewer(container, { toolbar: true });
+    viewer.load(url);
+  });
+
+  onDestroy(() => {
+    viewer?.destroy();
+    viewer = null;
+  });
+
+  async function handleSearch() {
+    if (!viewer || !query.trim()) return;
+    viewer.removeAllHighlights();
+    const matches = await viewer.search(query);
+    viewer.addHighlights(matches.map((m, i) => ({
+      id: `h-${i}`, page: m.page,
+      startChar: m.startChar, endChar: m.endChar,
+      color: 'rgba(255, 255, 0, 0.4)',
+    })));
+  }
+</script>
+
+<div>
+  <input bind:value={query} on:keydown={(e) => e.key === 'Enter' && handleSearch()}
+    placeholder="Search..." />
+  <button on:click={handleSearch}>Search</button>
+  <div bind:this={container} style="width: 100%; height: calc(100vh - 48px);" />
+</div>
 ```
 
 ## How It Works
