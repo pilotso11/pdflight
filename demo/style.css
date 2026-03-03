@@ -166,3 +166,86 @@ body {
 
 /* Thumbnail sidebar — default styles are injected by the library.
    Override .pdflight-thumbnail* classes here if you want custom visuals. */
+
+/* Controls toggle button — hidden on desktop */
+.controls-toggle {
+  display: none;
+}
+
+/* On desktop, controls-body is transparent to the grid layout */
+.controls-body {
+  display: contents;
+}
+
+/* Mobile-responsive layout for demo controls */
+@media (max-width: 600px) {
+  .toolbar { font-size: 14px; padding: 8px; }
+  .toolbar h1 { font-size: 16px; }
+
+  .controls-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    background: #f5f5f5;
+    border-top: 1px solid #ddd;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.15);
+    max-height: 70vh;
+    transition: max-height 0.3s ease;
+  }
+
+  .controls-panel.collapsed {
+    max-height: 44px;
+    overflow: hidden;
+  }
+
+  .controls-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 10px;
+    background: #e8e8e8;
+    border: none;
+    border-bottom: 1px solid #ddd;
+    font-size: 14px;
+    font-weight: 600;
+    color: #444;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .controls-toggle:active { background: #ddd; }
+
+  .controls-toggle-icon {
+    transition: transform 0.3s ease;
+    font-size: 10px;
+  }
+
+  .controls-panel.collapsed .controls-toggle-icon {
+    transform: rotate(180deg);
+  }
+
+  .controls-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .control-section-code { display: none; }
+  #json-io { width: 100%; }
+  .config-grid { grid-template-columns: 1fr; }
+
+  /* Give the viewer breathing room above the collapsed drawer */
+  .viewer-container {
+    padding-bottom: 44px;
+  }
+}

@@ -4,6 +4,7 @@ import {
   pdfRectToCssRect,
   mergeAdjacentRects,
   sliceRectHorizontal,
+  rotatePdfRect,
 } from '../../../src/utils/geometry';
 
 describe('rectFromTransform', () => {
@@ -22,6 +23,30 @@ describe('rectFromTransform', () => {
     const rect = rectFromTransform([24, 0, 0, 12, 100, 500], 60, 12);
     expect(rect.width).toBeCloseTo(120);
     expect(rect.height).toBeCloseTo(12 + 3); // itemHeight + descender
+  });
+
+  it('handles zero scale gracefully', () => {
+    // Zero scaleX/scaleY — fontSize=0, descenderDepth=0, scaleRatio=NaN
+    const rect = rectFromTransform([0, 0, 0, 0, 50, 300], 10, 5);
+    expect(rect.x).toBe(50);
+    expect(rect.y).toBe(300); // 300 - 0 descender
+    expect(rect.height).toBe(5); // 5 + 0 descender
+    // width = 10 * NaN due to 0/0 ratio — should be NaN
+    expect(rect.width).toBeNaN();
+  });
+
+  it('handles skewed transform', () => {
+    // transform with non-zero skew: [10, 5, 3, 12, 200, 600]
+    // fontSize = sqrt(12^2 + 3^2) = sqrt(153) ≈ 12.37
+    // scaleRatioX = sqrt(10^2 + 5^2) / sqrt(12^2 + 3^2) = sqrt(125)/sqrt(153)
+    const rect = rectFromTransform([10, 5, 3, 12, 200, 600], 40, 12);
+    const fontSize = Math.sqrt(144 + 9);
+    const descender = fontSize * 0.25;
+    const scaleRatio = Math.sqrt(125) / Math.sqrt(153);
+    expect(rect.x).toBeCloseTo(200);
+    expect(rect.y).toBeCloseTo(600 - descender);
+    expect(rect.width).toBeCloseTo(40 * scaleRatio);
+    expect(rect.height).toBeCloseTo(12 + descender);
   });
 });
 
@@ -94,5 +119,158 @@ describe('sliceRectHorizontal', () => {
     const rect = { x: 100, y: 200, width: 100, height: 12 };
     const sliced = sliceRectHorizontal(rect, 0, 1);
     expect(sliced).toEqual(rect);
+  });
+
+  it('handles start > end (degenerate slice)', () => {
+    const rect = { x: 100, y: 200, width: 100, height: 12 };
+    const sliced = sliceRectHorizontal(rect, 0.7, 0.2);
+    // Width becomes negative: 100 * (0.2 - 0.7) = -50
+    expect(sliced.width).toBeCloseTo(-50);
+  });
+
+  it('handles zero-width rect', () => {
+    const rect = { x: 100, y: 200, width: 0, height: 12 };
+    const sliced = sliceRectHorizontal(rect, 0.2, 0.8);
+    expect(sliced.x).toBeCloseTo(100);
+    expect(sliced.width).toBeCloseTo(0);
+  });
+});
+
+describe('rotatePdfRect', () => {
+  // Use a non-square page to verify width/height swapping
+  const origWidth = 612;  // US Letter width
+  const origHeight = 792; // US Letter height
+  const rect = { x: 100, y: 200, width: 50, height: 12 };
+
+  it('returns same rect for 0° rotation', () => {
+    const result = rotatePdfRect(rect, 0, origWidth, origHeight);
+    expect(result).toEqual(rect);
+  });
+
+  it('rotates 90° CW correctly', () => {
+    // x→y(inverted), y→x, width↔height swap
+    const result = rotatePdfRect(rect, 90, origWidth, origHeight);
+    expect(result.x).toBeCloseTo(200);                     // rect.y
+    expect(result.y).toBeCloseTo(origWidth - 100 - 50);    // origWidth - rect.x - rect.width
+    expect(result.width).toBeCloseTo(12);                   // rect.height
+    expect(result.height).toBeCloseTo(50);                  // rect.width
+  });
+
+  it('rotates 180° correctly', () => {
+    // Both axes inverted, no width/height swap
+    const result = rotatePdfRect(rect, 180, origWidth, origHeight);
+    expect(result.x).toBeCloseTo(origWidth - 100 - 50);    // origWidth - rect.x - rect.width
+    expect(result.y).toBeCloseTo(origHeight - 200 - 12);   // origHeight - rect.y - rect.height
+    expect(result.width).toBeCloseTo(50);
+    expect(result.height).toBeCloseTo(12);
+  });
+
+  it('rotates 270° CW correctly', () => {
+    // Inverse of 90°
+    const result = rotatePdfRect(rect, 270, origWidth, origHeight);
+    expect(result.x).toBeCloseTo(origHeight - 200 - 12);   // origHeight - rect.y - rect.height
+    expect(result.y).toBeCloseTo(100);                      // rect.x
+    expect(result.width).toBeCloseTo(12);                   // rect.height
+    expect(result.height).toBeCloseTo(50);                  // rect.width
+  });
+
+  it('round-trips through all four rotations back to original', () => {
+    // Rotating 90° four times should return to the original rect,
+    // but the page dimensions swap at each step.
+    let r = { ...rect };
+    let w = origWidth;
+    let h = origHeight;
+
+    // 0° → 90°: page dimensions swap for next rotation
+    r = rotatePdfRect(r, 90, w, h);
+    [w, h] = [h, w]; // viewport is now h × w
+
+    // 90° → 180°
+    r = rotatePdfRect(r, 90, w, h);
+    [w, h] = [h, w];
+
+    // 180° → 270°
+    r = rotatePdfRect(r, 90, w, h);
+    [w, h] = [h, w];
+
+    // 270° → 360° (back to 0°)
+    r = rotatePdfRect(r, 90, w, h);
+
+    expect(r.x).toBeCloseTo(rect.x);
+    expect(r.y).toBeCloseTo(rect.y);
+    expect(r.width).toBeCloseTo(rect.width);
+    expect(r.height).toBeCloseTo(rect.height);
+  });
+
+  it('handles rect at page origin (0,0)', () => {
+    const origin = { x: 0, y: 0, width: 20, height: 10 };
+    const r90 = rotatePdfRect(origin, 90, origWidth, origHeight);
+    expect(r90.x).toBeCloseTo(0);
+    expect(r90.y).toBeCloseTo(origWidth - 20);
+    expect(r90.width).toBeCloseTo(10);
+    expect(r90.height).toBeCloseTo(20);
+  });
+
+  it('handles square page correctly', () => {
+    const sq = { x: 10, y: 20, width: 30, height: 15 };
+    const size = 500;
+    const r90 = rotatePdfRect(sq, 90, size, size);
+    expect(r90.x).toBeCloseTo(20);
+    expect(r90.y).toBeCloseTo(size - 10 - 30);
+    expect(r90.width).toBeCloseTo(15);
+    expect(r90.height).toBeCloseTo(30);
+  });
+});
+
+describe('mergeAdjacentRects edge cases', () => {
+  it('merges overlapping rects on same line', () => {
+    const rects = [
+      { x: 100, y: 200, width: 40, height: 12 },
+      { x: 120, y: 200, width: 40, height: 12 }, // overlaps first rect
+    ];
+    const merged = mergeAdjacentRects(rects, 2);
+    expect(merged).toHaveLength(1);
+    expect(merged[0].x).toBeCloseTo(100);
+    expect(merged[0].width).toBeCloseTo(60); // 100 to 160
+  });
+
+  it('does not merge non-adjacent rects on same line', () => {
+    const rects = [
+      { x: 100, y: 200, width: 30, height: 12 },
+      { x: 200, y: 200, width: 30, height: 12 }, // gap of 70
+    ];
+    const merged = mergeAdjacentRects(rects, 2);
+    expect(merged).toHaveLength(2);
+  });
+
+  it('uses max height when merging rects of different heights', () => {
+    const rects = [
+      { x: 100, y: 200, width: 30, height: 10 },
+      { x: 130, y: 200, width: 30, height: 16 },
+    ];
+    const merged = mergeAdjacentRects(rects, 2);
+    expect(merged).toHaveLength(1);
+    expect(merged[0].height).toBe(16);
+  });
+
+  it('handles rects with zero width', () => {
+    const rects = [
+      { x: 100, y: 200, width: 0, height: 12 },
+      { x: 100, y: 200, width: 30, height: 12 },
+    ];
+    const merged = mergeAdjacentRects(rects, 2);
+    expect(merged).toHaveLength(1);
+    expect(merged[0].width).toBeCloseTo(30);
+  });
+
+  it('handles unsorted input correctly', () => {
+    const rects = [
+      { x: 200, y: 100, width: 30, height: 12 },
+      { x: 100, y: 200, width: 30, height: 12 },
+      { x: 100, y: 100, width: 30, height: 12 },
+    ];
+    const merged = mergeAdjacentRects(rects, 2);
+    // Two lines: y=100 has two rects (x=100 and x=200, gap too big), y=200 has one
+    expect(merged).toHaveLength(3);
   });
 });

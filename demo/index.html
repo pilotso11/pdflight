@@ -21,6 +21,10 @@
     </div>
 
     <footer id="controls-panel" class="controls-panel">
+      <button id="controls-toggle" class="controls-toggle" data-testid="controls-toggle" aria-label="Toggle controls">
+        <span class="controls-toggle-icon">&#9650;</span> Demo Controls
+      </button>
+      <div class="controls-body">
       <div class="control-section control-section-doc">
         <h3>Document</h3>
         <label for="file-input" class="btn">Open PDF</label>
@@ -107,6 +111,7 @@
         <button id="import-json" data-testid="import-json">Import JSON</button>
         <textarea id="json-io" data-testid="json-io"></textarea>
       </div>
+      </div><!-- .controls-body -->
     </footer>
   </div>
 

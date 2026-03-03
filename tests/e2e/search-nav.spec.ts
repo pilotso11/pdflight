@@ -12,11 +12,15 @@ test.describe('Search Navigation', () => {
     await page.click('[data-testid="search-btn"]');
     await expect(page.locator('[data-testid="search-results"]')).toHaveText('17 matches');
 
-    // After search, auto-nextMatch should set counter to 1/17
+    // After search, counter shows 0/17 (no auto-navigation)
     const counter = page.locator('[data-testid="match-counter"]');
+    await expect(counter).toHaveText('0/17');
+
+    // Click next to navigate to first match
+    await page.click('[data-testid="next-match"]');
     await expect(counter).toHaveText('1/17');
 
-    // Click next to advance
+    // Click next again to advance
     await page.click('[data-testid="next-match"]');
     await expect(counter).toHaveText('2/17');
   });
@@ -27,6 +31,9 @@ test.describe('Search Navigation', () => {
     await expect(page.locator('[data-testid="search-results"]')).toHaveText('17 matches');
 
     const counter = page.locator('[data-testid="match-counter"]');
+
+    // Navigate to first match
+    await page.click('[data-testid="next-match"]');
     await expect(counter).toHaveText('1/17');
 
     // Click prev — should wrap to last match (17/17)
@@ -51,18 +58,19 @@ test.describe('Search Navigation', () => {
   test('new search resets match navigation', async ({ page }) => {
     await page.fill('[data-testid="search-input"]', 'Lorem');
     await page.click('[data-testid="search-btn"]');
-    await expect(page.locator('[data-testid="match-counter"]')).toHaveText('1/17');
 
-    // Advance a few times
+    // Navigate to first match and advance
+    await page.click('[data-testid="next-match"]');
+    await expect(page.locator('[data-testid="match-counter"]')).toHaveText('1/17');
     await page.click('[data-testid="next-match"]');
     await expect(page.locator('[data-testid="match-counter"]')).toHaveText('2/17');
 
-    // New search should reset to 1/N
+    // New search should reset to 0/N (no auto-navigation)
     await page.fill('[data-testid="search-input"]', 'odio');
     await page.click('[data-testid="search-btn"]');
     const counter = page.locator('[data-testid="match-counter"]');
     const text = await counter.textContent();
-    expect(text).toMatch(/^1\/\d+$/);
+    expect(text).toMatch(/^0\/\d+$/);
   });
 
   test('toolbar searchNav section visible by default', async ({ page }) => {
@@ -81,9 +89,11 @@ test.describe('Search Navigation', () => {
 
     await page.fill('[data-testid="search-input"]', 'Lorem');
     await page.click('[data-testid="search-btn"]');
+
+    // Navigate to first match, then advance to a later one
+    await page.click('[data-testid="next-match"]');
     await expect(page.locator('[data-testid="match-counter"]')).toHaveText('1/17');
 
-    // Navigate to a later match that's likely off-screen
     for (let i = 0; i < 5; i++) {
       await page.click('[data-testid="next-match"]');
     }
@@ -96,9 +106,10 @@ test.describe('Search Navigation', () => {
   });
 
   test('outline mode renders border instead of background', async ({ page }) => {
-    // Default mode is outline — search and check the active match element
+    // Search and navigate to first match
     await page.fill('[data-testid="search-input"]', 'Lorem');
     await page.click('[data-testid="search-btn"]');
+    await page.click('[data-testid="next-match"]');
     await expect(page.locator('[data-testid="match-counter"]')).toHaveText('1/17');
 
     const activeEl = page.locator('.pdflight-highlight[data-highlight-id="__pdflight_active_match__"]').first();

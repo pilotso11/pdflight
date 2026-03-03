@@ -9,6 +9,7 @@ import { HighlightLayer } from '../highlight/HighlightLayer';
 import { PageRenderer } from './PageRenderer';
 import { Sidebar, resolveSidebarConfig, type PageHighlightInfo, type SidebarConfig } from './Sidebar';
 import { ViewerToolbar, resolveToolbarConfig, type ToolbarConfig } from './ViewerToolbar';
+import { computeMobileDefaults } from './mobileDefaults';
 
 export interface PdfViewerOptions {
   initialPage?: number;
@@ -86,6 +87,9 @@ export class PdfViewer {
     };
     this.highlightLayer.setTooltipContent(this.options.tooltipContent);
     this.sidebarConfig = resolveSidebarConfig(options.sidebar);
+
+    // Apply mobile-friendly defaults for narrow containers (only when consumer didn't explicitly set)
+    this.applyMobileDefaults(options);
 
     // Observe container resizes to reapply fit mode
     this.resizeObserver = new ResizeObserver(() => {
@@ -436,6 +440,18 @@ export class PdfViewer {
     this.currentMatchIndex = -1;
     this.eventListeners.clear();
     this.pdfDocument = null;
+  }
+
+  private applyMobileDefaults(options: PdfViewerOptions): void {
+    const overrides = computeMobileDefaults(this.container.clientWidth, options);
+    if (overrides.fitMode) {
+      this.fitMode = overrides.fitMode;
+      this.options.fitMode = overrides.fitMode;
+    }
+    if (overrides.sidebar === false) {
+      this.sidebarConfig = null;
+      this.options.sidebar = false;
+    }
   }
 
   private activateCurrentMatch(): SearchMatch {

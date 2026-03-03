@@ -202,10 +202,29 @@ async function applyConfig() {
   updateCodeSnippet();
 }
 
+// Mobile controls drawer toggle + mobile-friendly defaults
+function initControlsDrawer() {
+  const controlsPanel = document.getElementById('controls-panel')!;
+  const toggleBtn = document.getElementById('controls-toggle')!;
+
+  if (window.matchMedia('(max-width: 600px)').matches) {
+    // Start with drawer collapsed
+    controlsPanel.classList.add('collapsed');
+    // Disable thumbnails on mobile — they obscure the PDF
+    sidebarToggle.checked = false;
+    sidebar.classList.add('hidden');
+  }
+
+  toggleBtn.addEventListener('click', () => {
+    controlsPanel.classList.toggle('collapsed');
+  });
+}
+
 // Initialize
 function init() {
   createViewer();
   updateCodeSnippet();
+  initControlsDrawer();
 
   // File input — label[for="file-input"] natively triggers the input
   fileInput.addEventListener('change', handleFileSelect);
@@ -296,12 +315,7 @@ async function handleSearch() {
   const hasResults = currentSearchResults.length > 0;
   prevMatchBtn.disabled = !hasResults;
   nextMatchBtn.disabled = !hasResults;
-
-  if (hasResults) {
-    viewer.nextMatch();
-  } else {
-    matchCounter.textContent = '0/0';
-  }
+  matchCounter.textContent = hasResults ? `0/${currentSearchResults.length}` : '0/0';
 }
 
 function highlightAllResults() {

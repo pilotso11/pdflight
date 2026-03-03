@@ -46,11 +46,11 @@ const TOOLBAR_STYLES = `
   right: 0;
   z-index: 10;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 4px 2px;
   padding: 6px 12px;
-  min-height: 36px;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   background: rgba(255, 255, 255, 0.75);
@@ -83,10 +83,18 @@ const TOOLBAR_STYLES = `
 }
 .pdflight-toolbar-group {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 4px;
   padding: 0 8px;
   border-right: 1px solid rgba(0, 0, 0, 0.12);
+}
+@media (max-width: 500px) {
+  .pdflight-toolbar { justify-content: center; gap: 4px; }
+  .pdflight-toolbar-group { flex-shrink: 1; padding: 0 4px; }
+  .pdflight-toolbar-page-info,
+  .pdflight-toolbar-zoom-level,
+  .pdflight-toolbar-match-info { min-width: 0; }
 }
 .pdflight-toolbar-group:last-child { border-right: none; }
 .pdflight-toolbar-btn {
@@ -108,10 +116,12 @@ const TOOLBAR_STYLES = `
 .pdflight-toolbar-page-info,
 .pdflight-toolbar-zoom-level,
 .pdflight-toolbar-match-info {
-  min-width: 80px;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
+.pdflight-toolbar-page-info { min-width: 80px; }
+.pdflight-toolbar-zoom-level { min-width: 44px; }
+.pdflight-toolbar-match-info { min-width: 72px; }
 .pdflight-toolbar-select {
   padding: 4px 8px;
   border: 1px solid rgba(0, 0, 0, 0.15);
@@ -121,7 +131,20 @@ const TOOLBAR_STYLES = `
   font-size: 12px;
   cursor: pointer;
 }
+.pdflight-toolbar-fit-btn {
+  display: none;
+  width: auto;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+@media (max-width: 500px) {
+  .pdflight-toolbar-fit-select { display: none; }
+  .pdflight-toolbar-fit-btn { display: inline-flex; }
+}
 `;
+
+const FIT_MODES = ['width', 'page', 'none'] as const;
+const FIT_MODE_LABELS: Record<string, string> = { width: 'Fit W', page: 'Fit P', none: 'None' };
 
 let stylesInjected = false;
 
@@ -142,6 +165,7 @@ export class ViewerToolbar {
   private pageInfoEl: HTMLElement | null = null;
   private zoomLevelEl: HTMLElement | null = null;
   private fitSelectEl: HTMLSelectElement | null = null;
+  private fitBtnEl: HTMLButtonElement | null = null;
   private matchInfoEl: HTMLElement | null = null;
   private prevMatchBtn: HTMLButtonElement | null = null;
   private nextMatchBtn: HTMLButtonElement | null = null;
@@ -194,6 +218,9 @@ export class ViewerToolbar {
   updateFitMode(mode: 'width' | 'page' | 'none'): void {
     if (this.fitSelectEl) {
       this.fitSelectEl.value = mode;
+    }
+    if (this.fitBtnEl) {
+      this.fitBtnEl.textContent = FIT_MODE_LABELS[mode];
     }
   }
 
@@ -312,8 +339,9 @@ export class ViewerToolbar {
   private addFitMode(): void {
     const group = this.createGroup();
 
+    // Desktop: <select> dropdown
     this.fitSelectEl = document.createElement('select');
-    this.fitSelectEl.className = 'pdflight-toolbar-select';
+    this.fitSelectEl.className = 'pdflight-toolbar-select pdflight-toolbar-fit-select';
     this.fitSelectEl.title = 'Fit mode';
 
     for (const [value, label] of [
@@ -329,9 +357,26 @@ export class ViewerToolbar {
 
     this.fitSelectEl.addEventListener('change', () => {
       this.callbacks.onFitModeChange(this.fitSelectEl!.value as 'width' | 'page' | 'none');
+      if (this.fitBtnEl) {
+        this.fitBtnEl.textContent = FIT_MODE_LABELS[this.fitSelectEl!.value];
+      }
     });
 
-    group.appendChild(this.fitSelectEl);
+    // Mobile: cycle button (tap to cycle through modes)
+    this.fitBtnEl = document.createElement('button');
+    this.fitBtnEl.className = 'pdflight-toolbar-btn pdflight-toolbar-fit-btn';
+    this.fitBtnEl.textContent = FIT_MODE_LABELS['page'];
+    this.fitBtnEl.title = 'Cycle fit mode';
+    this.fitBtnEl.addEventListener('click', () => {
+      const current = this.fitSelectEl?.value ?? 'page';
+      const idx = FIT_MODES.indexOf(current as typeof FIT_MODES[number]);
+      const next = FIT_MODES[(idx + 1) % FIT_MODES.length];
+      if (this.fitSelectEl) this.fitSelectEl.value = next;
+      this.fitBtnEl!.textContent = FIT_MODE_LABELS[next];
+      this.callbacks.onFitModeChange(next);
+    });
+
+    group.append(this.fitSelectEl, this.fitBtnEl);
     this.el.appendChild(group);
   }
 
