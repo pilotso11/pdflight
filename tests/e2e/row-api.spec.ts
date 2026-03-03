@@ -160,4 +160,75 @@ test.describe('Row API — y-distance filtering (sample2)', () => {
     expect(result.fromEnd).toBe(1);
     expect(result.text).toContain('eight separate records');
   });
+
+  test('findText with nonexistent nearRow returns empty', async ({ page }) => {
+    const count = await page.evaluate(async () => {
+      const viewer = (window as any).viewer;
+      const matches = await viewer.findText('bookmark', {
+        page: 1,
+        nearRow: 999,
+      });
+      return matches.length;
+    });
+    expect(count).toBe(0);
+  });
+
+  test('findText with nearRow but no page returns empty', async ({ page }) => {
+    const count = await page.evaluate(async () => {
+      const viewer = (window as any).viewer;
+      const matches = await viewer.findText('bookmark', {
+        nearRow: 10,
+      });
+      return matches.length;
+    });
+    expect(count).toBe(0);
+  });
+
+  test('findText with maxDistance: 0 returns only exact row matches', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const viewer = (window as any).viewer;
+      // Row 13 contains "bookmarks" twice — maxDistance: 0 should only return
+      // matches on row 13's exact y-coordinate
+      const matches = await viewer.findText('bookmark', {
+        page: 1,
+        nearRow: 13,
+        maxDistance: 0,
+      });
+      return matches.length;
+    });
+    // Should find only matches on row 13 itself (not adjacent rows)
+    expect(result).toBeGreaterThan(0);
+    expect(result).toBeLessThanOrEqual(3);
+  });
+
+  test('findText returns empty when all matches are outside maxDistance', async ({ page }) => {
+    const count = await page.evaluate(async () => {
+      const viewer = (window as any).viewer;
+      // "Overview" is on row 8, far from row 18. With tiny maxDistance, no match.
+      const matches = await viewer.findText('Overview', {
+        page: 1,
+        nearRow: 18,
+        maxDistance: 1,
+      });
+      return matches.length;
+    });
+    expect(count).toBe(0);
+  });
+
+  test('getRows on nonexistent page returns empty', async ({ page }) => {
+    const rows = await page.evaluate(async () => {
+      const viewer = (window as any).viewer;
+      return viewer.getRows(999);
+    });
+    expect(rows).toEqual([]);
+  });
+
+  test('findText with empty string returns empty', async ({ page }) => {
+    const count = await page.evaluate(async () => {
+      const viewer = (window as any).viewer;
+      const matches = await viewer.findText('', { page: 1, nearRow: 5 });
+      return matches.length;
+    });
+    expect(count).toBe(0);
+  });
 });

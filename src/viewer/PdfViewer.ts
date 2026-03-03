@@ -384,37 +384,41 @@ export class PdfViewer {
     let results = searchPages(indices, text);
 
     // Sort and filter by proximity to nearRow if specified
-    if (opts?.nearRow && opts.page) {
+    if (opts?.nearRow) {
+      // nearRow requires page — without a page we can't build a row index
+      if (!opts.page) return [];
+
       const pageIndex = this.textIndices.get(opts.page);
-      if (pageIndex) {
-        const rows = buildRowIndex(pageIndex);
-        const targetRow = rows.find((r) => r.row === opts.nearRow);
-        const targetY = targetRow?.y;
+      if (!pageIndex) return [];
 
-        if (targetY !== undefined) {
-          // Compute max y-distance: explicit maxDistance, or default ±5 rows
-          const maxDist =
-            opts.maxDistance ?? avgLineSpacing(rows) * 5;
+      const rows = buildRowIndex(pageIndex);
+      const targetRow = rows.find((r) => r.row === opts.nearRow);
 
-          // Map each result to its row's y-coordinate for distance calc
-          const rowYForChar = (startChar: number): number | undefined => {
-            const rowNum = charToRow(rows, startChar);
-            return rows.find((r) => r.row === rowNum)?.y;
-          };
+      // If the target row doesn't exist, return empty — no valid anchor point
+      if (!targetRow) return [];
 
-          // Filter by y-distance, then sort by proximity
-          results = results.filter((m) => {
-            const my = rowYForChar(m.startChar);
-            return my !== undefined && Math.abs(my - targetY) <= maxDist;
-          });
+      const targetY = targetRow.y;
 
-          results.sort((a, b) => {
-            const yA = rowYForChar(a.startChar) ?? targetY;
-            const yB = rowYForChar(b.startChar) ?? targetY;
-            return Math.abs(yA - targetY) - Math.abs(yB - targetY);
-          });
-        }
-      }
+      // Compute max y-distance: explicit maxDistance, or default ±5 rows
+      const maxDist = opts.maxDistance ?? avgLineSpacing(rows) * 5;
+
+      // Map each result to its row's y-coordinate for distance calc
+      const rowYForChar = (startChar: number): number | undefined => {
+        const rowNum = charToRow(rows, startChar);
+        return rows.find((r) => r.row === rowNum)?.y;
+      };
+
+      // Filter by y-distance, then sort by proximity
+      results = results.filter((m) => {
+        const my = rowYForChar(m.startChar);
+        return my !== undefined && Math.abs(my - targetY) <= maxDist;
+      });
+
+      results.sort((a, b) => {
+        const yA = rowYForChar(a.startChar) ?? targetY;
+        const yB = rowYForChar(b.startChar) ?? targetY;
+        return Math.abs(yA - targetY) - Math.abs(yB - targetY);
+      });
     }
 
     if (opts?.maxResults && results.length > opts.maxResults) {
