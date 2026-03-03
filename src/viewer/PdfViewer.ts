@@ -355,6 +355,54 @@ export class PdfViewer {
     return rows.length;
   }
 
+  /**
+   * Search for text with optional location constraints.
+   *
+   * Unlike search(), this does not update match navigation state (nextMatch/prevMatch).
+   * It's a pure query that returns results for the consumer to highlight manually.
+   *
+   * When opts.page is specified, results are limited to that page.
+   * When opts.nearRow is specified (requires opts.page), results are sorted by
+   * proximity to that row number (closest first).
+   */
+  async findText(text: string, opts?: FindTextOptions): Promise<SearchMatch[]> {
+    if (!this.pdfDocument || !text) return [];
+
+    await this.ensureAllTextIndices();
+
+    let indices: PageTextIndex[];
+    if (opts?.page) {
+      const pageIndex = this.textIndices.get(opts.page);
+      if (!pageIndex) return [];
+      indices = [pageIndex];
+    } else {
+      indices = Array.from(this.textIndices.values()).sort(
+        (a, b) => a.pageNumber - b.pageNumber,
+      );
+    }
+
+    let results = searchPages(indices, text);
+
+    // Sort by proximity to nearRow if specified
+    if (opts?.nearRow && opts.page) {
+      const pageIndex = this.textIndices.get(opts.page);
+      if (pageIndex) {
+        const rows = buildRowIndex(pageIndex);
+        results.sort((a, b) => {
+          const rowA = charToRow(rows, a.startChar);
+          const rowB = charToRow(rows, b.startChar);
+          return Math.abs(rowA - opts.nearRow!) - Math.abs(rowB - opts.nearRow!);
+        });
+      }
+    }
+
+    if (opts?.maxResults && results.length > opts.maxResults) {
+      results = results.slice(0, opts.maxResults);
+    }
+
+    return results;
+  }
+
   /** Add a highlight. */
   addHighlight(highlight: Highlight): void {
     this.highlights.set(highlight.id, highlight);
