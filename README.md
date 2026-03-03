@@ -368,9 +368,23 @@ For server-side search or LLM fact-extraction use cases where results reference 
 // LLM returns: "Invoice total found on page 3, line 5"
 const matches = await viewer.findText('Invoice total', {
   page: 3,
-  nearRow: 5,    // sort results by proximity to this row
+  nearRow: 5,    // filter + sort by proximity to this row
 });
 viewer.addHighlight({ id: 'fact-1', ...matches[0], color: 'yellow' });
+
+// Control the proximity window (PDF units) — default is ±5 rows of text
+const nearby = await viewer.findText('total', {
+  page: 3,
+  nearRow: 5,
+  maxDistance: 50,       // tighter window
+});
+
+// Disable filtering, sort only
+const sorted = await viewer.findText('total', {
+  page: 3,
+  nearRow: 5,
+  maxDistance: Infinity, // return all matches, sorted by proximity
+});
 
 // Highlight an entire row
 const row = await viewer.getRow(3, 5);
@@ -386,6 +400,8 @@ const count = await viewer.getRowCount(1);
 ```
 
 Rows are computed by clustering text items by y-coordinate proximity — no native "line" concept exists in PDFs, so pdflight groups items within half a font-height of each other. Row numbering is 1-based from the top of the page.
+
+When `nearRow` is specified, `findText` filters results by **actual vertical distance** (y-coordinates), not row number. This matters for documents with images or charts — two adjacent row numbers can be far apart visually. The default `maxDistance` is `5 × avgLineSpacing`, which skips outlier gaps (like images) when computing spacing. Set `maxDistance: Infinity` to disable filtering and only sort by proximity.
 
 ## Why pdflight?
 
