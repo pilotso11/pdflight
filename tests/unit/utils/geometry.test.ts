@@ -5,6 +5,7 @@ import {
   mergeAdjacentRects,
   sliceRectHorizontal,
   rotatePdfRect,
+  isRotatedRect,
 } from '../../../src/utils/geometry';
 
 describe('rectFromTransform', () => {
@@ -34,18 +35,20 @@ describe('rectFromTransform', () => {
     expect(rect.width).toBe(10); // 10 * 1 (fallback ratio)
   });
 
-  it('handles skewed transform (different scaleX vs scaleY)', () => {
-    // transform with non-zero skew: [10, 5, 3, 12, 200, 600]
-    // scaleRatioX = |scaleX| / |scaleY| = 10/12 (skew doesn't affect advance width)
-    // fontSize = |scaleY| = 12
+  it('handles skewed+rotated transform via matrix decomposition', () => {
+    // transform [10, 5, 3, 12, 200, 600]: has both skew and rotation
+    // rotation = atan2(5, 10) ≈ 0.464 rad
+    // xMag = sqrt(100+25) ≈ 11.18, yMag = sqrt(9+144) ≈ 12.37
+    // scaleRatio = xMag/yMag ≈ 0.904, fontSize = yMag ≈ 12.37
     const rect = rectFromTransform([10, 5, 3, 12, 200, 600], 40, 12);
-    const fontSize = 12;
-    const descender = fontSize * 0.25;
-    const scaleRatio = 10 / 12;
-    expect(rect.x).toBeCloseTo(200);
-    expect(rect.y).toBeCloseTo(600 - descender);
-    expect(rect.width).toBeCloseTo(40 * scaleRatio);
-    expect(rect.height).toBeCloseTo(12 + descender);
+    expect(isRotatedRect(rect)).toBe(true);
+    if (isRotatedRect(rect)) {
+      expect(rect.rotation).toBeCloseTo(Math.atan2(5, 10));
+      const xMag = Math.sqrt(125);
+      const yMag = Math.sqrt(153);
+      expect(rect.width).toBeCloseTo(40 * xMag / yMag);
+      expect(rect.height).toBeCloseTo(12 + yMag * 0.25);
+    }
   });
 
   it('italic skew does not shrink width (pure italic, equal scale)', () => {
@@ -53,6 +56,44 @@ describe('rectFromTransform', () => {
     // Width should pass through at full size (ratio = 1.0)
     const rect = rectFromTransform([10.5, 0, 2.81, 10.5, 100, 500], 160, 10.5);
     expect(rect.width).toBeCloseTo(160); // no shrinkage from italic skew
+  });
+
+  it('returns RotatedRect for 90° CW rotated text (word cloud)', () => {
+    // transform [0, -26, 26, 0, x, y]: text goes downward
+    // atan2(-26, 0) = -π/2
+    const rect = rectFromTransform([0, -26, 26, 0, 200, 400], 50, 26);
+    expect(isRotatedRect(rect)).toBe(true);
+    if (isRotatedRect(rect)) {
+      expect(rect.rotation).toBeCloseTo(-Math.PI / 2);
+      // xMag = 26, yMag = 26, ratio = 1, fontSize = 26, descender = 6.5
+      expect(rect.width).toBeCloseTo(50);
+      expect(rect.height).toBeCloseTo(26 + 6.5);
+      // Origin shifted by descender in perpendicular-below direction:
+      // sin(-π/2) * 6.5 = -6.5, so x = 200 + (-6.5) = 193.5
+      // -cos(-π/2) * 6.5 ≈ 0, so y ≈ 400
+      expect(rect.x).toBeCloseTo(200 - 6.5);
+      expect(rect.y).toBeCloseTo(400);
+    }
+  });
+
+  it('returns RotatedRect for 90° CCW rotated text', () => {
+    // transform [0, 26, -26, 0, x, y]: text goes upward
+    // atan2(26, 0) = π/2
+    const rect = rectFromTransform([0, 26, -26, 0, 300, 500], 40, 26);
+    expect(isRotatedRect(rect)).toBe(true);
+    if (isRotatedRect(rect)) {
+      expect(rect.rotation).toBeCloseTo(Math.PI / 2);
+    }
+  });
+
+  it('returns plain Rect (not rotated) for standard horizontal text', () => {
+    const rect = rectFromTransform([12, 0, 0, 12, 100, 500], 60, 12);
+    expect(isRotatedRect(rect)).toBe(false);
+  });
+
+  it('returns plain Rect for italic text (no rotation despite skew)', () => {
+    const rect = rectFromTransform([10.5, 0, 2.81, 10.5, 100, 500], 160, 10.5);
+    expect(isRotatedRect(rect)).toBe(false);
   });
 });
 
@@ -76,6 +117,51 @@ describe('pdfRectToCssRect', () => {
     expect(css.y).toBeCloseTo((792 - 500 - 12) * 2);
     expect(css.width).toBeCloseTo(120);
     expect(css.height).toBeCloseTo(24);
+  });
+});
+
+describe('pdfRectToCssRect with rotation', () => {
+  it('converts rotated rect with negated rotation angle', () => {
+    // A rotated rect at -π/2 should produce CSS rotation of +π/2
+    const rotatedRect = { x: 200, y: 400, width: 50, height: 32.5, rotation: -Math.PI / 2 };
+    const css = pdfRectToCssRect(rotatedRect, 792, 1.0);
+    expect(isRotatedRect(css)).toBe(true);
+    if (isRotatedRect(css)) {
+      expect(css.rotation).toBeCloseTo(Math.PI / 2); // negated
+      expect(css.width).toBeCloseTo(50);
+      expect(css.height).toBeCloseTo(32.5);
+    }
+  });
+
+  it('non-rotated rect returns plain Rect (no rotation field)', () => {
+    const rect = { x: 100, y: 500, width: 60, height: 12 };
+    const css = pdfRectToCssRect(rect, 792, 1.0);
+    expect(isRotatedRect(css)).toBe(false);
+  });
+});
+
+describe('sliceRectHorizontal with rotation', () => {
+  it('shifts origin along text direction for rotated rect', () => {
+    // rotation = -π/2 (text going downward): cos(-π/2) ≈ 0, sin(-π/2) = -1
+    const rect = { x: 200, y: 400, width: 100, height: 32, rotation: -Math.PI / 2 };
+    const sliced = sliceRectHorizontal(rect, 0.2, 0.7);
+    expect(isRotatedRect(sliced)).toBe(true);
+    if (isRotatedRect(sliced)) {
+      expect(sliced.rotation).toBeCloseTo(-Math.PI / 2);
+      expect(sliced.width).toBeCloseTo(50); // 100 * (0.7 - 0.2)
+      // For -π/2: cos = 0, sin = -1. Offset = 100 * 0.2 = 20
+      // x shifts by cos * offset ≈ 0, y shifts by sin * offset = -20
+      expect(sliced.x).toBeCloseTo(200);
+      expect(sliced.y).toBeCloseTo(400 - 20);
+    }
+  });
+
+  it('non-rotated rect uses existing x-shift logic', () => {
+    const rect = { x: 100, y: 200, width: 100, height: 12 };
+    const sliced = sliceRectHorizontal(rect, 0.3, 0.8);
+    expect(isRotatedRect(sliced)).toBe(false);
+    expect(sliced.x).toBeCloseTo(130);
+    expect(sliced.width).toBeCloseTo(50);
   });
 });
 
@@ -225,6 +311,80 @@ describe('rotatePdfRect', () => {
     expect(r90.y).toBeCloseTo(size - 10 - 30);
     expect(r90.width).toBeCloseTo(15);
     expect(r90.height).toBeCloseTo(30);
+  });
+});
+
+describe('rotatePdfRect with RotatedRect (item + page rotation)', () => {
+  const origWidth = 612;
+  const origHeight = 792;
+
+  it('combines item rotation with 90° page rotation', () => {
+    // Item rotated -π/2 (text going down), page rotated 90° CW
+    const rect = { x: 200, y: 400, width: 50, height: 32, rotation: -Math.PI / 2 };
+    const result = rotatePdfRect(rect, 90, origWidth, origHeight);
+    expect(isRotatedRect(result)).toBe(true);
+    if (isRotatedRect(result)) {
+      // Page 90° CW = -π/2 added to item rotation
+      expect(result.rotation).toBeCloseTo(-Math.PI / 2 + (-Math.PI / 2));
+      // Origin point: (x,y) → (y, origWidth - x) = (400, 412)
+      expect(result.x).toBeCloseTo(400);
+      expect(result.y).toBeCloseTo(origWidth - 200);
+      // Width/height unchanged (rotation is tracked in angle)
+      expect(result.width).toBeCloseTo(50);
+      expect(result.height).toBeCloseTo(32);
+    }
+  });
+
+  it('combines item rotation with 180° page rotation', () => {
+    const rect = { x: 100, y: 300, width: 40, height: 20, rotation: Math.PI / 4 };
+    const result = rotatePdfRect(rect, 180, origWidth, origHeight);
+    expect(isRotatedRect(result)).toBe(true);
+    if (isRotatedRect(result)) {
+      expect(result.rotation).toBeCloseTo(Math.PI / 4 + (-Math.PI));
+      expect(result.x).toBeCloseTo(origWidth - 100);
+      expect(result.y).toBeCloseTo(origHeight - 300);
+    }
+  });
+
+  it('combines item rotation with 270° page rotation', () => {
+    const rect = { x: 150, y: 500, width: 60, height: 25, rotation: -Math.PI / 2 };
+    const result = rotatePdfRect(rect, 270, origWidth, origHeight);
+    expect(isRotatedRect(result)).toBe(true);
+    if (isRotatedRect(result)) {
+      expect(result.rotation).toBeCloseTo(-Math.PI / 2 + (-3 * Math.PI / 2));
+      expect(result.x).toBeCloseTo(origHeight - 500);
+      expect(result.y).toBeCloseTo(150);
+    }
+  });
+
+  it('returns unchanged RotatedRect for 0° page rotation', () => {
+    const rect = { x: 200, y: 400, width: 50, height: 32, rotation: -Math.PI / 2 };
+    const result = rotatePdfRect(rect, 0, origWidth, origHeight);
+    expect(result).toEqual(rect);
+  });
+});
+
+describe('mergeAdjacentRects with rotated rects', () => {
+  it('does not merge rotated rects, appends them after merged axis-aligned', () => {
+    const rects = [
+      { x: 100, y: 200, width: 30, height: 12 },
+      { x: 130, y: 200, width: 30, height: 12 },
+      { x: 50, y: 300, width: 40, height: 20, rotation: -Math.PI / 2 },
+    ];
+    const merged = mergeAdjacentRects(rects, 2);
+    // First two merge, rotated rect stays separate
+    expect(merged).toHaveLength(2);
+    expect(merged[0].width).toBeCloseTo(60); // merged axis-aligned
+    expect(isRotatedRect(merged[1])).toBe(true);
+  });
+
+  it('handles all-rotated rects (no merging)', () => {
+    const rects = [
+      { x: 100, y: 200, width: 30, height: 12, rotation: -Math.PI / 2 },
+      { x: 130, y: 200, width: 30, height: 12, rotation: -Math.PI / 2 },
+    ];
+    const merged = mergeAdjacentRects(rects, 2);
+    expect(merged).toHaveLength(2);
   });
 });
 

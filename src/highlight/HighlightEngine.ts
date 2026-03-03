@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Seth Osher. MIT License.
 import type { PageTextIndex } from '../types';
 import type { Highlight, HighlightRect } from './types';
-import { rectFromTransform, rotatePdfRect, pdfRectToCssRect, mergeAdjacentRects, sliceRectHorizontal } from '../utils/geometry';
+import { rectFromTransform, rotatePdfRect, pdfRectToCssRect, mergeAdjacentRects, sliceRectHorizontal, isRotatedRect } from '../utils/geometry';
 
 interface ItemRange {
   itemIndex: number;
@@ -68,7 +68,19 @@ export function computeHighlightRects(
     const rotatedRect = rotation !== 0
       ? rotatePdfRect(pdfRect, rotation, unrotatedPageWidth, unrotatedPageHeight)
       : pdfRect;
-    rects.push(pdfRectToCssRect(rotatedRect, pageHeight, scale));
+    const cssRect = pdfRectToCssRect(rotatedRect, pageHeight, scale);
+
+    // Carry rotation from the CSS rect into the HighlightRect
+    const highlightRect: HighlightRect = {
+      x: cssRect.x,
+      y: cssRect.y,
+      width: cssRect.width,
+      height: cssRect.height,
+    };
+    if (isRotatedRect(cssRect)) {
+      highlightRect.rotation = cssRect.rotation;
+    }
+    rects.push(highlightRect);
   }
 
   // Merge adjacent rects on the same line (within 2px tolerance)

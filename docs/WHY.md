@@ -79,6 +79,26 @@ scaleRatioX = |scaleX| / |scaleY|
 
 This means italic text highlights are the correct width — they don't shrink by 3–4% as they would if skew were factored into the ratio. The descender depth (for characters like p, g, y) is similarly derived from `|scaleY|` alone, not from the full vertical norm.
 
+### Rotated text items (word clouds, labels)
+
+Some PDFs contain individually rotated text items — words placed at arbitrary angles, common in word clouds, infographics, and chart labels. Each item's transform matrix encodes the rotation: a standard horizontal word has transform `[12, 0, 0, 12, x, y]` (b=0, no rotation), while a word rotated 90° clockwise has `[0, -26, 26, 0, x, y]` (a=0, b≠0).
+
+The naïve approach — using only the diagonal elements `scaleX` and `scaleY` — produces zero-size rectangles when both are zero (pure rotation). pdflight decomposes the full transform matrix:
+
+```
+rotation = atan2(b, a)
+xScale   = √(a² + b²)    // scale along text direction
+yScale   = √(c² + d²)    // scale perpendicular to text
+```
+
+When `|rotation| < ε`, the code falls back to the diagonal-only extraction for backward compatibility with horizontal and italic text. For non-zero rotation, the decomposition produces a `RotatedRect` — a rectangle with a rotation angle in the text's local frame.
+
+The descender depth (for characters like p, g, y) extends perpendicular to the text baseline. For horizontal text that's straight down `(0, -1)`, but for rotated text it's `(sin θ, -cos θ)` in world coordinates — the unit vector `(0, -1)` rotated by angle θ.
+
+The CSS highlight div receives `transform-origin: 0 0` and `transform: rotate(Xdeg)`, with the rotation angle negated to convert from PDF's counterclockwise convention to CSS's clockwise convention. The pivot point (CSS top-left corner) is computed from the PDF bottom-left origin by walking along the height vector: `x_css = (x_pdf - height × sin θ) × scale`.
+
+![Rotated text highlights in a word cloud — 6 words highlighted in 5 colors across different angles](screenshots/rotated-text-highlights.png)
+
 ### Rotated pages
 
 PDF page rotation is separate from the text content coordinate system. When a page is rotated 90°, 180°, or 270°, the text items from `getTextContent()` are still reported in the **original unrotated coordinate space**, but the rendered viewport uses the rotated coordinates.
@@ -90,6 +110,8 @@ pdflight bridges this gap with `rotatePdfRect()`, which transforms each highligh
 - **270° CW**: inverse of 90°
 
 This rotation is applied after computing the rectangle from the text transform and before converting from PDF coordinates (origin bottom-left, y-up) to CSS coordinates (origin top-left, y-down). The result: highlights remain accurate regardless of page rotation, and a full 360° round-trip (four successive 90° rotations) returns to the original rectangle.
+
+When page rotation and item-level rotation combine (e.g. a word cloud on a rotated page), the page rotation transforms only the origin point of each `RotatedRect`, and the page rotation angle is added to the item's rotation. Width and height stay in the rect's local frame — unlike axis-aligned rects, which swap width and height at 90° and 270°.
 
 ## Comparison
 

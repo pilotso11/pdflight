@@ -116,6 +116,43 @@ describe('computeHighlightRects', () => {
     expect(rects[0].width).toBeCloseTo(14);
   });
 
+  it('computes rotated highlight rect for rotated text item', () => {
+    // Word cloud style: text rotated 90° CW, transform [0, -26, 26, 0, x, y]
+    const items = [makeItem('LLM', {
+      transform: [0, -26, 26, 0, 200, 400],
+      width: 3 * 7,
+      height: 26,
+      charWidths: [7, 7, 7],
+    })];
+    const index = buildPageTextIndex(1, items);
+    const rects = computeHighlightRects(
+      index,
+      { page: 1, startChar: 0, endChar: 3, id: 'h1', color: 'yellow' },
+      792,
+      1.0,
+    );
+    expect(rects).toHaveLength(1);
+    // Should have non-zero rotation
+    expect(rects[0].rotation).toBeDefined();
+    expect(rects[0].rotation).not.toBe(0);
+    // Should have reasonable dimensions (not collapsed)
+    expect(rects[0].width).toBeGreaterThan(10);
+    expect(rects[0].height).toBeGreaterThan(10);
+  });
+
+  it('non-rotated items produce rects without rotation', () => {
+    const items = [makeItem('Hello', { transform: [12, 0, 0, 12, 100, 500] })];
+    const index = buildPageTextIndex(1, items);
+    const rects = computeHighlightRects(
+      index,
+      { page: 1, startChar: 0, endChar: 5, id: 'h1', color: 'yellow' },
+      792,
+      1.0,
+    );
+    expect(rects).toHaveLength(1);
+    expect(rects[0].rotation).toBeUndefined();
+  });
+
   it('computes rects with 90° rotation', () => {
     const items = [makeItem('Hello', { transform: [12, 0, 0, 12, 100, 500] })];
     const index = buildPageTextIndex(1, items);

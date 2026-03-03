@@ -94,6 +94,13 @@ export class HighlightLayer {
     el.style.pointerEvents = 'auto';
     el.style.cursor = 'pointer';
 
+    // Apply CSS rotation for rotated text items (e.g. word cloud)
+    if (rect.rotation) {
+      const degrees = rect.rotation * (180 / Math.PI);
+      el.style.transformOrigin = '0 0';
+      el.style.transform = `rotate(${degrees}deg)`;
+    }
+
     if (highlight.style === 'outline') {
       el.style.border = '2px solid';
       el.style.borderColor = highlight.color;
@@ -120,12 +127,26 @@ export class HighlightLayer {
     const content = this.tooltipContentFn(highlight);
     if (!content) return;
 
+    // Compute tooltip position: below the bottom-left corner of the highlight.
+    // For rotated rects, the bottom-left corner is offset from the CSS origin.
+    let tooltipX = rect.x;
+    let tooltipY = rect.y + rect.height + 4;
+    if (rect.rotation) {
+      const rad = rect.rotation; // already in CSS convention (CW positive)
+      const sinR = Math.sin(rad);
+      const cosR = Math.cos(rad);
+      // Bottom-left of rotated rect (in CSS page coords) relative to origin:
+      // origin + height * (−sin α, cos α) where α is CSS rotation angle
+      tooltipX = rect.x - rect.height * sinR;
+      tooltipY = rect.y + rect.height * cosR + 4;
+    }
+
     this.tooltipElement = document.createElement('div');
     this.tooltipElement.className = 'pdflight-tooltip';
     this.tooltipElement.style.cssText = `
       position: absolute;
-      left: ${rect.x}px;
-      top: ${rect.y + rect.height + 4}px;
+      left: ${tooltipX}px;
+      top: ${tooltipY}px;
       background: #333;
       color: white;
       padding: 4px 8px;
