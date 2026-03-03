@@ -161,7 +161,9 @@ export function mergeAdjacentRects(rects: Rect[], tolerance: number): Rect[] {
 
       if (sameLine && adjacent) {
         const newRight = Math.max(last.x + last.width, current.x + current.width);
-        last.width = newRight - last.x;
+        const newLeft = Math.min(last.x, current.x);
+        last.x = newLeft;
+        last.width = newRight - newLeft;
         last.height = Math.max(last.height, current.height);
       } else {
         merged.push({ ...current });
