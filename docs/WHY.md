@@ -113,20 +113,37 @@ This rotation is applied after computing the rectangle from the text transform a
 
 When page rotation and item-level rotation combine (e.g. a word cloud on a rotated page), the page rotation transforms only the origin point of each `RotatedRect`, and the page rotation angle is added to the item's rotation. Width and height stay in the rect's local frame — unlike axis-aligned rects, which swap width and height at 90° and 270°.
 
+## Row-addressable text
+
+PDFs have no native "line" or "row" concept — text items are positioned at arbitrary coordinates. But external systems often reference text by location: an LLM returns "Invoice total on page 3, line 5", or a search engine returns page-level results that need to be anchored to a specific region.
+
+pdflight bridges this gap with a row index that clusters text items into visual rows by y-coordinate proximity (within half a font-height of each other). Consumers can search with location hints:
+
+```typescript
+const matches = await viewer.findText('Invoice total', {
+  page: 3,
+  nearRow: 5,
+});
+```
+
+Results are filtered and sorted by **actual vertical distance** (y-coordinates), not row number. This distinction matters for documents with embedded images or charts — two consecutively numbered rows can be visually far apart if an image sits between them. The default proximity window is ±5 rows of normal text spacing, computed by averaging line gaps while excluding outliers like image breaks.
+
+No other open-source PDF viewer library provides row-level text addressing. The commercial SDKs (Nutrient, Apryse) expose line-level text extraction APIs — Nutrient's [`textLinesForPageIndex`](https://www.nutrient.io/api/web/PSPDFKit.TextLine.html) and Apryse's [`TextExtractor.Line`](https://sdk.apryse.com/api/PDFTronSDK/dotnet/pdftron.PDF.TextExtractor.Line.html) — but search and line extraction are separate operations that the consumer must wire together. pdflight combines both into a single `findText()` call with proximity filtering.
+
 ## Comparison
 
-| | Positioning method | Cross-item search | Hyphenation | Sub/superscripts | Framework | License |
-|---|---|---|---|---|---|---|
-| **pdflight** | `getTextContent()` transform matrices + per-char font widths | Yes (normalized index) | Yes | Yes | Agnostic | MIT |
-| **pdf.js built-in** | CSS class on text layer spans | Internal only (not exposed) | Yes (since 2022) | No | Agnostic | Apache 2.0 |
-| **react-pdf-highlighter** | `getClientRects()` on DOM selection | No search engine | No | No | React | MIT |
-| **@react-pdf-viewer/highlight** | Percentage rects from DOM selection | No search engine | No | No | React | MIT |
-| **ngx-extended-pdf-viewer** | Delegates to pdf.js text layer | Via pdf.js only | Inherited | No | Angular | MIT |
-| **vue-pdf-embed / VuePDF** | Delegates to pdf.js text layer | Via pdf.js only | Inherited | No | Vue 3 | MIT |
-| **Nutrient (PSPDFKit)** | Proprietary WASM engine, PDF-native coords | Yes | Yes | Proprietary | Agnostic | Commercial |
-| **Apryse (PDFTron)** | Proprietary WASM engine, PDF-native coords | Yes | Yes | Proprietary | Agnostic | Commercial |
+| | Positioning method | Cross-item search | Row search | Hyphenation | Sub/superscripts | Framework | License |
+|---|---|---|---|---|---|---|---|
+| **pdflight** | `getTextContent()` transform matrices + per-char font widths | Yes (normalized index) | Yes (y-proximity rows) | Yes | Yes | Agnostic | MIT |
+| **pdf.js built-in** | CSS class on text layer spans | Internal only (not exposed) | No | Yes (since 2022) | No | Agnostic | Apache 2.0 |
+| **react-pdf-highlighter** | `getClientRects()` on DOM selection | No search engine | No | No | No | React | MIT |
+| **@react-pdf-viewer/highlight** | Percentage rects from DOM selection | No search engine | No | No | No | React | MIT |
+| **ngx-extended-pdf-viewer** | Delegates to pdf.js text layer | Via pdf.js only | No | Inherited | No | Angular | MIT |
+| **vue-pdf-embed / VuePDF** | Delegates to pdf.js text layer | Via pdf.js only | No | Inherited | No | Vue 3 | MIT |
+| **Nutrient (PSPDFKit)** | Proprietary WASM engine, PDF-native coords | Yes | Yes (line API, separate from search) | Yes | Proprietary | Agnostic | Commercial |
+| **Apryse (PDFTron)** | Proprietary WASM engine, PDF-native coords | Yes | Yes (line API, separate from search) | Yes | Proprietary | Agnostic | Commercial |
 
 ## The short version
 
-- **vs. open-source alternatives**: pdflight is the only open-source library that computes highlight geometry from glyph-level data rather than DOM measurement. It's also the only one with a normalized text index that enables search across text fragmentation boundaries, and it works with any framework.
-- **vs. commercial SDKs** (Nutrient, Apryse): these solve the same accuracy problem by owning the entire PDF rendering engine (WASM-based, not pdf.js). They're more feature-complete but cost significant licensing fees. pdflight builds on top of pdf.js and is free.
+- **vs. open-source alternatives**: pdflight is the only open-source library that computes highlight geometry from glyph-level data rather than DOM measurement. It's also the only one with a normalized text index that enables search across text fragmentation boundaries, row-addressable text for LLM/search integration, and it works with any framework.
+- **vs. commercial SDKs** (Nutrient, Apryse): these solve the same accuracy problem by owning the entire PDF rendering engine (WASM-based, not pdf.js). They expose line-level text extraction APIs, but search and line extraction are separate operations — pdflight's `findText()` combines both with proximity filtering in a single call. They're more feature-complete but cost significant licensing fees. pdflight builds on top of pdf.js and is free.
