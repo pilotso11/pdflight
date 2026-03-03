@@ -4,6 +4,8 @@ import type { PageTextIndex } from '../types';
 import type { SearchMatch } from '../search/types';
 import type { Highlight, ActiveMatchStyle } from '../highlight/types';
 import { searchPages } from '../search/SearchEngine';
+import { buildRowIndex, charToRow } from '../search/RowIndex';
+import type { RowInfo, FindTextOptions } from '../search/types';
 import { computeHighlightRects } from '../highlight/HighlightEngine';
 import { HighlightLayer } from '../highlight/HighlightLayer';
 import { PageRenderer } from './PageRenderer';
@@ -334,6 +336,25 @@ export class PdfViewer {
     return this.searchMatches.length;
   }
 
+  /** Get all visual text rows on a page, ordered top-to-bottom. */
+  async getRows(page: number): Promise<RowInfo[]> {
+    const textIndex = await this.ensureTextIndexForPage(page);
+    if (!textIndex) return [];
+    return buildRowIndex(textIndex);
+  }
+
+  /** Get a specific row (1-based from top). Returns null if row doesn't exist. */
+  async getRow(page: number, row: number): Promise<RowInfo | null> {
+    const rows = await this.getRows(page);
+    return rows.find(r => r.row === row) ?? null;
+  }
+
+  /** Get the number of visual text rows on a page. */
+  async getRowCount(page: number): Promise<number> {
+    const rows = await this.getRows(page);
+    return rows.length;
+  }
+
   /** Add a highlight. */
   addHighlight(highlight: Highlight): void {
     this.highlights.set(highlight.id, highlight);
@@ -570,6 +591,11 @@ export class PdfViewer {
         }
       }
     }
+  }
+
+  private async ensureTextIndexForPage(page: number): Promise<PageTextIndex | null> {
+    await this.ensureAllTextIndices();
+    return this.textIndices.get(page) ?? null;
   }
 
   private renderHighlights(): void {
