@@ -113,6 +113,27 @@
         <button id="import-json" data-testid="import-json">Import JSON</button>
         <textarea id="json-io" data-testid="json-io"></textarea>
       </div>
+      <div class="control-section control-section-rows">
+        <h3>Row API</h3>
+        <div class="search-row">
+          <label for="row-page">Page</label>
+          <input type="number" id="row-page" data-testid="row-page" value="1" min="1" style="width: 50px;">
+          <button id="get-rows" data-testid="get-rows">Get Rows</button>
+          <span id="row-count" data-testid="row-count"></span>
+        </div>
+        <div class="search-row">
+          <label for="row-num">Row</label>
+          <input type="number" id="row-num" data-testid="row-num" value="1" min="1" style="width: 50px;">
+          <button id="highlight-row" data-testid="highlight-row">Highlight Row</button>
+        </div>
+        <div class="search-row">
+          <input type="text" id="find-text-input" data-testid="find-text-input" placeholder="Find text...">
+          <label for="find-near-row">near row</label>
+          <input type="number" id="find-near-row" data-testid="find-near-row" value="" min="1" style="width: 50px;">
+          <button id="find-text-btn" data-testid="find-text-btn">Find</button>
+        </div>
+        <div id="row-output" data-testid="row-output" class="row-output"></div>
+      </div>
       </div><!-- .controls-body -->
     </footer>
   </div>

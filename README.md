@@ -360,6 +360,33 @@ Unlike solutions that use DOM measurement, pdflight computes highlights from pdf
 
 ![Rotated text highlights — words at different angles highlighted in different colors](https://raw.githubusercontent.com/pilotso11/pdflight/main/docs/screenshots/rotated-text-highlights.png)
 
+### Row-Addressable Text
+
+For server-side search or LLM fact-extraction use cases where results reference page and line numbers:
+
+```typescript
+// LLM returns: "Invoice total found on page 3, line 5"
+const matches = await viewer.findText('Invoice total', {
+  page: 3,
+  nearRow: 5,    // sort results by proximity to this row
+});
+viewer.addHighlight({ id: 'fact-1', ...matches[0], color: 'yellow' });
+
+// Highlight an entire row
+const row = await viewer.getRow(3, 5);
+viewer.addHighlight({
+  id: 'row-5', page: row.page,
+  startChar: row.startChar, endChar: row.endChar,
+  color: 'rgba(0, 200, 255, 0.3)',
+});
+
+// Get all rows on a page
+const rows = await viewer.getRows(1);
+const count = await viewer.getRowCount(1);
+```
+
+Rows are computed by clustering text items by y-coordinate proximity — no native "line" concept exists in PDFs, so pdflight groups items within half a font-height of each other. Row numbering is 1-based from the top of the page.
+
 ## Why pdflight?
 
 Most PDF highlighting libraries position overlays by measuring DOM elements. This breaks when the text layer drifts from the canvas — a [well-documented pdf.js problem](https://github.com/mozilla/pdf.js/issues/20017). pdflight computes geometry directly from glyph-level font metrics, bypassing the DOM entirely.

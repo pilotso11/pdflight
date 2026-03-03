@@ -249,3 +249,15 @@ body {
     padding-bottom: 44px;
   }
 }
+
+.row-output {
+  font-family: monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  max-height: 150px;
+  overflow-y: auto;
+  background: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-top: 4px;
+}
