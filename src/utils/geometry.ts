@@ -24,15 +24,15 @@ export function rectFromTransform(
   itemHeight: number,
 ): Rect {
   const [scaleX, skewY, skewX, scaleY, tx, ty] = transform;
-  // For unrotated text, scaleX ≈ fontSize. The itemWidth is already in
-  // user-space units, but if the transform has a different horizontal scale
-  // than vertical, we need to account for it.
-  const scaleRatioX = Math.sqrt(scaleX * scaleX + skewY * skewY) /
-    Math.sqrt(scaleY * scaleY + skewX * skewX);
+  // itemWidth from pdf.js is in text-space units. The diagonal scale components
+  // (scaleX, scaleY) convert text-space to user-space. Only use diagonal scales
+  // for the ratio — skew components (skewX for italic, skewY for rotated text)
+  // don't affect the advance width of glyphs.
+  const scaleRatioX = (scaleY !== 0) ? Math.abs(scaleX) / Math.abs(scaleY) : 1;
 
   // Extend rect below baseline for descenders (~25% of font size).
   // fontSize is derived from the vertical scale component of the transform.
-  const fontSize = Math.sqrt(scaleY * scaleY + skewX * skewX);
+  const fontSize = Math.abs(scaleY);
   const descenderDepth = fontSize * 0.25;
 
   return {

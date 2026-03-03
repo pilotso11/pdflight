@@ -63,6 +63,34 @@ This index also handles:
 - **Subscripts and superscripts** — detected via y-offset differences between consecutive items
 - **Whitespace normalization** — collapsed for consistent matching
 
+## Handling italic and rotated text
+
+### Italic text
+
+PDFs encode italic text not by selecting an italic font face, but by applying a **skew transform** to the text matrix. Each text item's transform is a 6-element array `[scaleX, skewY, skewX, scaleY, tx, ty]` — the `skewX` component controls the italic slant (typically ~2.8 for standard italic).
+
+The naïve approach is to compute the text item's effective size from the full transform matrix using the Euclidean norm: `√(scaleX² + skewY²)` for horizontal scale and `√(scaleY² + skewX²)` for vertical. This is mathematically correct for determining the overall scaling of a vector through the transform — but it's wrong for positioning highlights, because **skew does not affect glyph advance widths**. An italic "m" leans to the right but occupies the same horizontal space as an upright "m".
+
+pdflight uses only the diagonal scale components to compute the width ratio:
+
+```
+scaleRatioX = |scaleX| / |scaleY|
+```
+
+This means italic text highlights are the correct width — they don't shrink by 3–4% as they would if skew were factored into the ratio. The descender depth (for characters like p, g, y) is similarly derived from `|scaleY|` alone, not from the full vertical norm.
+
+### Rotated pages
+
+PDF page rotation is separate from the text content coordinate system. When a page is rotated 90°, 180°, or 270°, the text items from `getTextContent()` are still reported in the **original unrotated coordinate space**, but the rendered viewport uses the rotated coordinates.
+
+pdflight bridges this gap with `rotatePdfRect()`, which transforms each highlight rectangle from the original PDF space into the rotated viewport space:
+
+- **90° CW**: x-axis maps to rotated y-axis (inverted), y-axis maps to rotated x-axis, width and height swap
+- **180°**: both axes invert, no width/height swap
+- **270° CW**: inverse of 90°
+
+This rotation is applied after computing the rectangle from the text transform and before converting from PDF coordinates (origin bottom-left, y-up) to CSS coordinates (origin top-left, y-down). The result: highlights remain accurate regardless of page rotation, and a full 360° round-trip (four successive 90° rotations) returns to the original rectangle.
+
 ## Comparison
 
 | | Positioning method | Cross-item search | Hyphenation | Sub/superscripts | Framework | License |

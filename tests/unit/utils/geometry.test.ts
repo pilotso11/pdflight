@@ -26,27 +26,33 @@ describe('rectFromTransform', () => {
   });
 
   it('handles zero scale gracefully', () => {
-    // Zero scaleX/scaleY — fontSize=0, descenderDepth=0, scaleRatio=NaN
+    // Zero scaleX/scaleY — fontSize=0, descenderDepth=0, scaleRatio falls back to 1
     const rect = rectFromTransform([0, 0, 0, 0, 50, 300], 10, 5);
     expect(rect.x).toBe(50);
     expect(rect.y).toBe(300); // 300 - 0 descender
     expect(rect.height).toBe(5); // 5 + 0 descender
-    // width = 10 * NaN due to 0/0 ratio — should be NaN
-    expect(rect.width).toBeNaN();
+    expect(rect.width).toBe(10); // 10 * 1 (fallback ratio)
   });
 
-  it('handles skewed transform', () => {
+  it('handles skewed transform (different scaleX vs scaleY)', () => {
     // transform with non-zero skew: [10, 5, 3, 12, 200, 600]
-    // fontSize = sqrt(12^2 + 3^2) = sqrt(153) ≈ 12.37
-    // scaleRatioX = sqrt(10^2 + 5^2) / sqrt(12^2 + 3^2) = sqrt(125)/sqrt(153)
+    // scaleRatioX = |scaleX| / |scaleY| = 10/12 (skew doesn't affect advance width)
+    // fontSize = |scaleY| = 12
     const rect = rectFromTransform([10, 5, 3, 12, 200, 600], 40, 12);
-    const fontSize = Math.sqrt(144 + 9);
+    const fontSize = 12;
     const descender = fontSize * 0.25;
-    const scaleRatio = Math.sqrt(125) / Math.sqrt(153);
+    const scaleRatio = 10 / 12;
     expect(rect.x).toBeCloseTo(200);
     expect(rect.y).toBeCloseTo(600 - descender);
     expect(rect.width).toBeCloseTo(40 * scaleRatio);
     expect(rect.height).toBeCloseTo(12 + descender);
+  });
+
+  it('italic skew does not shrink width (pure italic, equal scale)', () => {
+    // Italic text: scaleX = scaleY = 10.5, skewX = 2.81 (like the sample PDF)
+    // Width should pass through at full size (ratio = 1.0)
+    const rect = rectFromTransform([10.5, 0, 2.81, 10.5, 100, 500], 160, 10.5);
+    expect(rect.width).toBeCloseTo(160); // no shrinkage from italic skew
   });
 });
 
