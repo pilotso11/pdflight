@@ -19,6 +19,8 @@ export interface RowInfo {
   endChar: number;
   /** The row's concatenated text content. */
   text: string;
+  /** Y-coordinate of the row in PDF space (higher = higher on page). */
+  y: number;
 }
 
 /** Options for location-constrained text search. */
@@ -29,4 +31,11 @@ export interface FindTextOptions {
   nearRow?: number;
   /** Maximum number of results to return. */
   maxResults?: number;
+  /**
+   * Maximum y-distance (in PDF units) from nearRow to include results.
+   * When nearRow is set and maxDistance is omitted, defaults to
+   * 5 × average line spacing on the page — roughly ±5 rows of text.
+   * Set to Infinity to disable filtering and only sort by proximity.
+   */
+  maxDistance?: number;
 }

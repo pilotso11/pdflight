@@ -4,7 +4,7 @@ import type { PageTextIndex } from '../types';
 import type { SearchMatch } from '../search/types';
 import type { Highlight, ActiveMatchStyle } from '../highlight/types';
 import { searchPages } from '../search/SearchEngine';
-import { buildRowIndex, charToRow } from '../search/RowIndex';
+import { buildRowIndex, charToRow, avgLineSpacing } from '../search/RowIndex';
 import type { RowInfo, FindTextOptions } from '../search/types';
 import { computeHighlightRects } from '../highlight/HighlightEngine';
 import { HighlightLayer } from '../highlight/HighlightLayer';
@@ -383,16 +383,37 @@ export class PdfViewer {
 
     let results = searchPages(indices, text);
 
-    // Sort by proximity to nearRow if specified
+    // Sort and filter by proximity to nearRow if specified
     if (opts?.nearRow && opts.page) {
       const pageIndex = this.textIndices.get(opts.page);
       if (pageIndex) {
         const rows = buildRowIndex(pageIndex);
-        results.sort((a, b) => {
-          const rowA = charToRow(rows, a.startChar);
-          const rowB = charToRow(rows, b.startChar);
-          return Math.abs(rowA - opts.nearRow!) - Math.abs(rowB - opts.nearRow!);
-        });
+        const targetRow = rows.find((r) => r.row === opts.nearRow);
+        const targetY = targetRow?.y;
+
+        if (targetY !== undefined) {
+          // Compute max y-distance: explicit maxDistance, or default ±5 rows
+          const maxDist =
+            opts.maxDistance ?? avgLineSpacing(rows) * 5;
+
+          // Map each result to its row's y-coordinate for distance calc
+          const rowYForChar = (startChar: number): number | undefined => {
+            const rowNum = charToRow(rows, startChar);
+            return rows.find((r) => r.row === rowNum)?.y;
+          };
+
+          // Filter by y-distance, then sort by proximity
+          results = results.filter((m) => {
+            const my = rowYForChar(m.startChar);
+            return my !== undefined && Math.abs(my - targetY) <= maxDist;
+          });
+
+          results.sort((a, b) => {
+            const yA = rowYForChar(a.startChar) ?? targetY;
+            const yB = rowYForChar(b.startChar) ?? targetY;
+            return Math.abs(yA - targetY) - Math.abs(yB - targetY);
+          });
+        }
       }
     }
 

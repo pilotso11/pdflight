@@ -96,10 +96,31 @@ export function buildRowIndex(pageTextIndex: PageTextIndex): RowInfo[] {
       startChar,
       endChar,
       text: normalizedText.slice(startChar, endChar),
+      y: cluster.y,
     });
   }
 
   return rows;
+}
+
+/**
+ * Compute the average vertical spacing between adjacent rows.
+ * Returns the mean y-distance between consecutive rows, or the
+ * first row's font-size estimate if there's only one row.
+ */
+export function avgLineSpacing(rows: RowInfo[]): number {
+  if (rows.length <= 1) return rows.length === 1 ? Math.abs(rows[0].y) * 0.02 || 12 : 12;
+  let totalDist = 0;
+  let count = 0;
+  for (let i = 1; i < rows.length; i++) {
+    const gap = Math.abs(rows[i - 1].y - rows[i].y);
+    // Skip abnormally large gaps (images, page breaks) — more than 4× the
+    // running average so far — so they don't inflate the spacing estimate.
+    if (count > 0 && gap > 4 * (totalDist / count)) continue;
+    totalDist += gap;
+    count++;
+  }
+  return count > 0 ? totalDist / count : 12;
 }
 
 /**

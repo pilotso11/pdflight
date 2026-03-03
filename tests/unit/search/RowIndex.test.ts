@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Seth Osher. MIT License.
 import { describe, it, expect } from 'vitest';
-import { buildRowIndex, charToRow } from '../../../src/search/RowIndex';
+import { buildRowIndex, charToRow, avgLineSpacing } from '../../../src/search/RowIndex';
 import { buildPageTextIndex } from '../../../src/search/TextIndex';
 import type { PdflightTextItem } from '../../../src/types';
 
@@ -30,6 +30,7 @@ describe('buildRowIndex', () => {
     expect(rows[0].text).toBe('Hello World');
     expect(rows[0].startChar).toBe(0);
     expect(rows[0].endChar).toBe(11);
+    expect(rows[0].y).toBe(500);
   });
 
   it('clusters items on different y-coordinates into separate rows', () => {
@@ -145,5 +146,42 @@ describe('charToRow', () => {
     const index = buildPageTextIndex(1, [makeItem('Hello')]);
     const rows = buildRowIndex(index);
     expect(charToRow(rows, 999)).toBe(0);
+  });
+});
+
+describe('avgLineSpacing', () => {
+  it('computes average spacing between consecutive rows', () => {
+    const items = [
+      makeItem('Row A', { transform: [12, 0, 0, 12, 100, 700] }),
+      makeItem('Row B', { transform: [12, 0, 0, 12, 100, 680] }),
+      makeItem('Row C', { transform: [12, 0, 0, 12, 100, 660] }),
+    ];
+    const index = buildPageTextIndex(1, items);
+    const rows = buildRowIndex(index);
+    // Spacing: 700→680 = 20, 680→660 = 20, avg = 20
+    expect(avgLineSpacing(rows)).toBe(20);
+  });
+
+  it('excludes abnormally large gaps (e.g. images)', () => {
+    const items = [
+      makeItem('Above image', { transform: [12, 0, 0, 12, 100, 500] }),
+      makeItem('Normal line', { transform: [12, 0, 0, 12, 100, 485] }),
+      makeItem('Below image', { transform: [12, 0, 0, 12, 100, 200] }),
+      makeItem('Final line', { transform: [12, 0, 0, 12, 100, 185] }),
+    ];
+    const index = buildPageTextIndex(1, items);
+    const rows = buildRowIndex(index);
+    // Gaps: 15, 285, 15. The 285 gap is >4× the running avg so far (15), so excluded.
+    expect(avgLineSpacing(rows)).toBe(15);
+  });
+
+  it('returns fallback for empty rows', () => {
+    expect(avgLineSpacing([])).toBe(12);
+  });
+
+  it('returns fallback for single row', () => {
+    const index = buildPageTextIndex(1, [makeItem('Only row')]);
+    const rows = buildRowIndex(index);
+    expect(avgLineSpacing(rows)).toBeGreaterThan(0);
   });
 });
