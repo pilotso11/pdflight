@@ -22,13 +22,15 @@ interface RowInfo {
   startChar: number;  // Start index in normalized text
   endChar: number;    // End index in normalized text
   text: string;       // The row's concatenated text content
+  y: number;          // Y-coordinate in PDF space (higher = higher on page)
 }
 
 /** Options for findText() location-constrained search. */
 interface FindTextOptions {
   page?: number;       // Constrain to specific page
-  nearRow?: number;    // Prefer results near this row (1-based)
+  nearRow?: number;    // Prefer results near this row (1-based); requires page
   maxResults?: number; // Limit results (default: all)
+  maxDistance?: number; // Max y-distance in PDF units (default: 5 × avgLineSpacing)
 }
 ```
 
@@ -62,12 +64,24 @@ For rotated text items: use the topmost point of the item's bounding box for y-c
 
 ### findText() with nearRow
 
+`nearRow` requires `page` — returns `[]` if page is omitted. Returns `[]` if the target row doesn't exist on the page.
+
 When `nearRow` is specified:
 
 1. Run normal text search constrained to the specified page (reuse existing `searchPages()`).
-2. For each match, compute which row its `startChar` falls in (via the row index).
-3. Sort results by distance from `nearRow` (closest first).
-4. Multi-row text spans work naturally — `startChar`/`endChar` from the existing search already cover the full character range regardless of row boundaries.
+2. Build the row index and look up the target row's y-coordinate.
+3. Compute `maxDistance`: explicit value from options, or default `5 × avgLineSpacing`.
+4. Filter results: keep only matches whose row y-coordinate is within `maxDistance` of the target row's y.
+5. Sort remaining results by y-distance from target row (closest first).
+6. Multi-row text spans work naturally — `startChar`/`endChar` from the existing search already cover the full character range regardless of row boundaries. The match's row is determined by `startChar`.
+
+#### Why y-distance instead of row-number distance
+
+PDFs with embedded images or charts can have large vertical gaps between consecutive row numbers. For example, row 13 and row 14 might be sequentially numbered but separated by a 250-unit image — far larger than the ~13-unit normal line spacing. Filtering by row number would incorrectly treat these as "adjacent". Y-coordinate distance captures the actual visual proximity.
+
+#### avgLineSpacing
+
+`avgLineSpacing(rows)` computes the mean vertical gap between adjacent rows, **excluding outlier gaps** (>4× the running average). This prevents large image/chart gaps from inflating the spacing estimate. The default `maxDistance = 5 × avgLineSpacing` gives a window of roughly ±5 normal text rows.
 
 When only `page` is specified (no `nearRow`): filter existing search results to that page, preserve visual-order sorting.
 
@@ -117,20 +131,18 @@ Row numbering is 1-based (consistent with page numbering in the existing API).
 
 ### New Files
 
-- `src/search/RowIndex.ts` — `buildRowIndex(pageTextIndex): RowInfo[]`, row clustering logic
-- `tests/unit/search/RowIndex.test.ts` — unit tests for row clustering
+- `src/search/RowIndex.ts` — `buildRowIndex()`, `charToRow()`, `avgLineSpacing()`
+- `tests/unit/search/RowIndex.test.ts` — unit tests for row clustering, charToRow, avgLineSpacing
+- `tests/e2e/row-api.spec.ts` — 16 E2E tests: core API, y-distance filtering, cross-row search, edge cases
 
 ### Modified Files
 
 - `src/viewer/PdfViewer.ts` — add `getRows()`, `getRow()`, `getRowCount()`, `findText()` methods
-- `src/search/SearchEngine.ts` — possibly extend `searchPages()` to accept page filter (or filter in PdfViewer)
-- `src/index.ts` — export `RowInfo`, `FindTextOptions`, `buildRowIndex`
-- `src/search/types.ts` — add `RowInfo` and `FindTextOptions` type definitions
-
-### Test Files
-
-- `tests/unit/search/RowIndex.test.ts` — row clustering with various layouts
-- `tests/e2e/row-api.spec.ts` — E2E tests using demo app
+- `src/index.ts` — export `RowInfo`, `FindTextOptions`, `buildRowIndex`, `charToRow`, `avgLineSpacing`
+- `src/search/types.ts` — add `RowInfo` (with `y`), `FindTextOptions` (with `maxDistance`)
+- `demo/index.html` — Row API control section
+- `demo/app.ts` — Row API event handlers
+- `README.md` — Row-Addressable Text documentation section
 
 ## Design Decisions
 
@@ -139,6 +151,10 @@ Row numbering is 1-based (consistent with page numbering in the existing API).
 | Row definition | Y-proximity clustering | Business documents have consistent line spacing; half-font-height tolerance handles mixed sizes |
 | Row numbering | 1-based from top | Matches how humans and LLMs count lines; consistent with page numbering |
 | API style | Data-oriented (plain objects) | Consistent with existing search() → addHighlight() pattern |
-| findText nearRow | Sort by distance, not filter | LLM line numbers may be approximate; returning closest matches is more robust |
+| findText nearRow | Filter + sort by y-distance | Row numbers are sequential but visual distance varies (images, charts). Y-coordinate distance captures actual proximity |
+| Default maxDistance | 5 × avgLineSpacing | Roughly ±5 rows of text; avgLineSpacing excludes outlier gaps so images don't inflate the window |
+| Nonexistent nearRow | Return empty `[]` | No valid anchor point — returning all results unfiltered would be surprising |
+| nearRow without page | Return empty `[]` | Can't build a row index without a page; fail explicitly rather than silently ignoring |
+| RowInfo.y | Exposed in public type | Useful for debugging and advanced consumers; flows naturally from clustering |
 | Rotated text row assignment | By topmost bounding point | A 45° word should group with the visual row it appears in |
 | Navigation | Not built-in | Consumer calls goToPage() and scrolls as needed; keeps methods pure data |
