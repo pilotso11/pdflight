@@ -107,3 +107,57 @@ test.describe('Row-Addressable Text API', () => {
     await expect(highlights.first()).toBeVisible();
   });
 });
+
+test.describe('Row API — y-distance filtering (sample2)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await page.selectOption('[data-testid="demo-pdf-select"]', 'pdf-sample2.pdf');
+    await page.waitForSelector('[data-testid="pdf-viewer"] canvas', { timeout: 10000 });
+  });
+
+  test('findText nearRow filters by y-distance (not row number)', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const viewer = (window as any).viewer;
+      // "bookmark" appears many times on page 1, but a large image separates
+      // the upper and lower text blocks — y-distance filtering should exclude
+      // matches on the far side of the image.
+      const allMatches = await viewer.findText('bookmark', {
+        page: 1,
+        nearRow: 10,
+        maxDistance: Infinity, // no filtering
+      });
+      const filtered = await viewer.findText('bookmark', {
+        page: 1,
+        nearRow: 10,
+        // default maxDistance = 5 × avgLineSpacing
+      });
+      return { all: allMatches.length, filtered: filtered.length };
+    });
+    expect(result.all).toBeGreaterThan(result.filtered);
+    expect(result.filtered).toBeGreaterThan(0);
+    expect(result.filtered).toBeLessThanOrEqual(6);
+  });
+
+  test('findText finds text spanning multiple rows with nearRow', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const viewer = (window as any).viewer;
+      // "eight separate records" spans row 9 ("...eight") and row 10 ("separate records.")
+      const fromStart = await viewer.findText('eight separate records', {
+        page: 1,
+        nearRow: 9,
+      });
+      const fromEnd = await viewer.findText('eight separate records', {
+        page: 1,
+        nearRow: 10,
+      });
+      return {
+        fromStart: fromStart.length,
+        fromEnd: fromEnd.length,
+        text: fromStart[0]?.text,
+      };
+    });
+    expect(result.fromStart).toBe(1);
+    expect(result.fromEnd).toBe(1);
+    expect(result.text).toContain('eight separate records');
+  });
+});
