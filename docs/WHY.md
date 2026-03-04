@@ -79,6 +79,8 @@ scaleRatioX = |scaleX| / |scaleY|
 
 This means italic text highlights are the correct width — they don't shrink by 3–4% as they would if skew were factored into the ratio. The descender depth (for characters like p, g, y) is similarly derived from `|scaleY|` alone, not from the full vertical norm.
 
+![Italic text highlights — "Lorem ipsum", "adipiscing", and "odio" precisely covered with no shrinkage or drift](screenshots/odio-highlight-accurate.png)
+
 ### Rotated text items (word clouds, labels)
 
 Some PDFs contain individually rotated text items — words placed at arbitrary angles, common in word clouds, infographics, and chart labels. Each item's transform matrix encodes the rotation: a standard horizontal word has transform `[12, 0, 0, 12, x, y]` (b=0, no rotation), while a word rotated 90° clockwise has `[0, -26, 26, 0, x, y]` (a=0, b≠0).

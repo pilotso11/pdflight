@@ -22,6 +22,7 @@
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
     "test:e2e": "bunx playwright test",
+    "screenshots": "bunx playwright test --config=scripts/screenshots.config.ts",
     "test:e2e:ui": "bunx playwright test --ui",
     "test:e2e:debug": "bunx playwright test --debug",
     "lint": "eslint src/ tests/",
