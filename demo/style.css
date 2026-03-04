@@ -73,12 +73,14 @@ body {
   display: grid;
   grid-template-areas:
     "doc    search  config  code"
-    "serial serial  config  code";
+    "serial rows    config  code";
   grid-template-columns: auto auto 1fr auto;
   gap: 12px 24px;
   padding: 12px;
   background: #f5f5f5;
   border-top: 1px solid #ddd;
+  max-height: 40vh;
+  overflow-y: auto;
 }
 
 .control-section { display: flex; flex-direction: column; gap: 8px; }
@@ -87,6 +89,7 @@ body {
 .control-section-config { grid-area: config; }
 .control-section-code { grid-area: code; }
 .control-section-serial { grid-area: serial; }
+.control-section-rows { grid-area: rows; }
 
 .control-section h3 { margin: 0; font-size: 14px; }
 
