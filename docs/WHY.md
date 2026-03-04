@@ -1,6 +1,6 @@
 # Why pdflight?
 
-I'm using LLM's now to do deep research of text documents.  A few years ago, this would have been much more challenging. But, how do we fact check? Asking an LLM to provide citations into the document in the prompt is easy. The user can fact check the sources within the document.   Building a UI that allows the user to view and navigate between these, and highlighting them to the user seems like an obvious choice. 
+I'm using LLMs now to do deep research on text documents. A few years ago, this would have been much more challenging. But how do we fact-check? Asking an LLM to provide citations into the document in the prompt is easy: the user can fact-check the sources within the document. Building a UI that allows users to view and navigate between these citations, and highlights them, seems like an obvious choice.
 
 ```text
 Cite every claim with an inline reference [page, line, quote].

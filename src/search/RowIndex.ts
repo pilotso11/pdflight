@@ -105,11 +105,11 @@ export function buildRowIndex(pageTextIndex: PageTextIndex): RowInfo[] {
 
 /**
  * Compute the average vertical spacing between adjacent rows.
- * Returns the mean y-distance between consecutive rows, or the
- * first row's font-size estimate if there's only one row.
+ * Returns the mean y-distance between consecutive rows, or a
+ * default estimate (12) if there's zero or one row.
  */
 export function avgLineSpacing(rows: RowInfo[]): number {
-  if (rows.length <= 1) return rows.length === 1 ? Math.abs(rows[0].y) * 0.02 || 12 : 12;
+  if (rows.length <= 1) return 12;
   let totalDist = 0;
   let count = 0;
   for (let i = 1; i < rows.length; i++) {
