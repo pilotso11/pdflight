@@ -24,6 +24,17 @@ const prevMatchBtn = document.getElementById('prev-match') as HTMLButtonElement;
 const nextMatchBtn = document.getElementById('next-match') as HTMLButtonElement;
 const matchCounter = document.getElementById('match-counter') as HTMLSpanElement;
 
+// Row API DOM elements
+const rowPage = document.getElementById('row-page') as HTMLInputElement;
+const getRowsBtn = document.getElementById('get-rows') as HTMLButtonElement;
+const rowCount = document.getElementById('row-count') as HTMLSpanElement;
+const rowNum = document.getElementById('row-num') as HTMLInputElement;
+const highlightRowBtn = document.getElementById('highlight-row') as HTMLButtonElement;
+const findTextInput = document.getElementById('find-text-input') as HTMLInputElement;
+const findNearRow = document.getElementById('find-near-row') as HTMLInputElement;
+const findTextBtn = document.getElementById('find-text-btn') as HTMLButtonElement;
+const rowOutput = document.getElementById('row-output') as HTMLDivElement;
+
 // Config DOM elements
 const cfgToolbar = document.getElementById('cfg-toolbar') as HTMLInputElement;
 const cfgToolbarPos = document.getElementById('cfg-toolbar-pos') as HTMLSelectElement;
@@ -202,10 +213,29 @@ async function applyConfig() {
   updateCodeSnippet();
 }
 
+// Mobile controls drawer toggle + mobile-friendly defaults
+function initControlsDrawer() {
+  const controlsPanel = document.getElementById('controls-panel')!;
+  const toggleBtn = document.getElementById('controls-toggle')!;
+
+  if (window.matchMedia('(max-width: 600px)').matches) {
+    // Start with drawer collapsed
+    controlsPanel.classList.add('collapsed');
+    // Disable thumbnails on mobile — they obscure the PDF
+    sidebarToggle.checked = false;
+    sidebar.classList.add('hidden');
+  }
+
+  toggleBtn.addEventListener('click', () => {
+    controlsPanel.classList.toggle('collapsed');
+  });
+}
+
 // Initialize
 function init() {
   createViewer();
   updateCodeSnippet();
+  initControlsDrawer();
 
   // File input — label[for="file-input"] natively triggers the input
   fileInput.addEventListener('change', handleFileSelect);
@@ -265,6 +295,53 @@ function init() {
 
   // Apply config button
   applyConfigBtn.addEventListener('click', applyConfig);
+
+  // Row API
+  getRowsBtn.addEventListener('click', async () => {
+    if (!viewer) return;
+    const page = Number(rowPage.value) || 1;
+    const rows = await viewer.getRows(page);
+    rowCount.textContent = `${rows.length} rows`;
+    rowOutput.textContent = rows.map(r => `Row ${r.row}: "${r.text}"`).join('\n');
+  });
+
+  highlightRowBtn.addEventListener('click', async () => {
+    if (!viewer) return;
+    const page = Number(rowPage.value) || 1;
+    const row = Number(rowNum.value) || 1;
+    const rowInfo = await viewer.getRow(page, row);
+    if (!rowInfo) {
+      rowOutput.textContent = `Row ${row} not found on page ${page}`;
+      return;
+    }
+    viewer.addHighlight({
+      id: `row-hl-${page}-${row}`,
+      page: rowInfo.page,
+      startChar: rowInfo.startChar,
+      endChar: rowInfo.endChar,
+      color: currentHighlightColor,
+    });
+    rowOutput.textContent = `Highlighted row ${row}: "${rowInfo.text}"`;
+  });
+
+  findTextBtn.addEventListener('click', async () => {
+    if (!viewer) return;
+    const text = findTextInput.value.trim();
+    if (!text) return;
+    const page = Number(rowPage.value) || undefined;
+    const nearRow = Number(findNearRow.value) || undefined;
+    const matches = await viewer.findText(text, { page, nearRow });
+    rowOutput.textContent = `${matches.length} match${matches.length !== 1 ? 'es' : ''}`;
+    if (matches.length > 0) {
+      viewer.addHighlights(matches.map((m, i) => ({
+        id: `find-${i}`,
+        page: m.page,
+        startChar: m.startChar,
+        endChar: m.endChar,
+        color: currentHighlightColor,
+      })));
+    }
+  });
 }
 
 async function handleFileSelect(e: Event) {
@@ -296,12 +373,7 @@ async function handleSearch() {
   const hasResults = currentSearchResults.length > 0;
   prevMatchBtn.disabled = !hasResults;
   nextMatchBtn.disabled = !hasResults;
-
-  if (hasResults) {
-    viewer.nextMatch();
-  } else {
-    matchCounter.textContent = '0/0';
-  }
+  matchCounter.textContent = hasResults ? `0/${currentSearchResults.length}` : '0/0';
 }
 
 function highlightAllResults() {

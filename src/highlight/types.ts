@@ -21,4 +21,6 @@ export interface HighlightRect {
   y: number;
   width: number;
   height: number;
+  /** Rotation angle in radians (CSS convention: positive = clockwise). */
+  rotation?: number;
 }

@@ -87,4 +87,128 @@ describe('computeHighlightRects', () => {
     const rects = computeHighlightRects(index, { page: 1, startChar: -1, endChar: 3, id: 'h1', color: 'yellow' }, 792, 1.0);
     expect(rects).toHaveLength(0);
   });
+
+  it('returns empty array for startChar >= endChar', () => {
+    const items = [makeItem('Hello')];
+    const index = buildPageTextIndex(1, items);
+    const rects = computeHighlightRects(index, { page: 1, startChar: 3, endChar: 3, id: 'h1', color: 'yellow' }, 792, 1.0);
+    expect(rects).toHaveLength(0);
+  });
+
+  it('returns empty array for endChar beyond charMap length', () => {
+    const items = [makeItem('Hi')];
+    const index = buildPageTextIndex(1, items);
+    const rects = computeHighlightRects(index, { page: 1, startChar: 0, endChar: 100, id: 'h1', color: 'yellow' }, 792, 1.0);
+    expect(rects).toHaveLength(0);
+  });
+
+  it('handles item with no charWidths (fallback to uniform)', () => {
+    const items = [makeItem('Hello', {
+      charWidths: [], // empty charWidths
+      width: 35,
+    })];
+    const index = buildPageTextIndex(1, items);
+    // Highlight partial: chars 1-3 ('el')
+    const rects = computeHighlightRects(index, { page: 1, startChar: 1, endChar: 3, id: 'h1', color: 'yellow' }, 792, 1.0);
+    expect(rects).toHaveLength(1);
+    // Fallback to uniform: each char = 35/5 = 7, so start at 100+7, width = 14
+    expect(rects[0].x).toBeCloseTo(100 + 7);
+    expect(rects[0].width).toBeCloseTo(14);
+  });
+
+  it('computes rotated highlight rect for rotated text item', () => {
+    // Word cloud style: text rotated 90° CW, transform [0, -26, 26, 0, x, y]
+    const items = [makeItem('LLM', {
+      transform: [0, -26, 26, 0, 200, 400],
+      width: 3 * 7,
+      height: 26,
+      charWidths: [7, 7, 7],
+    })];
+    const index = buildPageTextIndex(1, items);
+    const rects = computeHighlightRects(
+      index,
+      { page: 1, startChar: 0, endChar: 3, id: 'h1', color: 'yellow' },
+      792,
+      1.0,
+    );
+    expect(rects).toHaveLength(1);
+    // Should have non-zero rotation
+    expect(rects[0].rotation).toBeDefined();
+    expect(rects[0].rotation).not.toBe(0);
+    // Should have reasonable dimensions (not collapsed)
+    expect(rects[0].width).toBeGreaterThan(10);
+    expect(rects[0].height).toBeGreaterThan(10);
+  });
+
+  it('non-rotated items produce rects without rotation', () => {
+    const items = [makeItem('Hello', { transform: [12, 0, 0, 12, 100, 500] })];
+    const index = buildPageTextIndex(1, items);
+    const rects = computeHighlightRects(
+      index,
+      { page: 1, startChar: 0, endChar: 5, id: 'h1', color: 'yellow' },
+      792,
+      1.0,
+    );
+    expect(rects).toHaveLength(1);
+    expect(rects[0].rotation).toBeUndefined();
+  });
+
+  it('computes rects with 90° rotation', () => {
+    const items = [makeItem('Hello', { transform: [12, 0, 0, 12, 100, 500] })];
+    const index = buildPageTextIndex(1, items);
+    const unrotatedW = 612;
+    const unrotatedH = 792;
+    // With rotation, the "page height" for CSS conversion becomes the rotated viewport height
+    // which equals the original page width (612)
+    const rotatedPageHeight = unrotatedW;
+    const rects = computeHighlightRects(
+      index,
+      { page: 1, startChar: 0, endChar: 5, id: 'h1', color: 'yellow' },
+      rotatedPageHeight,
+      1.0,
+      90,
+      unrotatedW,
+      unrotatedH,
+    );
+    expect(rects).toHaveLength(1);
+    // At 90°, width and height swap in the result
+    // The rect should exist and have positive dimensions
+    expect(rects[0].width).toBeGreaterThan(0);
+    expect(rects[0].height).toBeGreaterThan(0);
+  });
+
+  it('computes rects with 180° rotation', () => {
+    const items = [makeItem('Hello', { transform: [12, 0, 0, 12, 100, 500] })];
+    const index = buildPageTextIndex(1, items);
+    const rects = computeHighlightRects(
+      index,
+      { page: 1, startChar: 0, endChar: 5, id: 'h1', color: 'yellow' },
+      792,
+      1.0,
+      180,
+      612,
+      792,
+    );
+    expect(rects).toHaveLength(1);
+    expect(rects[0].width).toBeGreaterThan(0);
+    expect(rects[0].height).toBeGreaterThan(0);
+  });
+
+  it('computes rects with 270° rotation', () => {
+    const items = [makeItem('Hello', { transform: [12, 0, 0, 12, 100, 500] })];
+    const index = buildPageTextIndex(1, items);
+    const rotatedPageHeight = 612; // original width becomes height
+    const rects = computeHighlightRects(
+      index,
+      { page: 1, startChar: 0, endChar: 5, id: 'h1', color: 'yellow' },
+      rotatedPageHeight,
+      1.0,
+      270,
+      612,
+      792,
+    );
+    expect(rects).toHaveLength(1);
+    expect(rects[0].width).toBeGreaterThan(0);
+    expect(rects[0].height).toBeGreaterThan(0);
+  });
 });

@@ -8,9 +8,10 @@ export { ViewerToolbar, type ToolbarConfig, type ToolbarCallbacks, resolveToolba
 export { HighlightLayer } from './highlight/HighlightLayer';
 export { searchPages } from './search/SearchEngine';
 export { buildPageTextIndex } from './search/TextIndex';
+export { buildRowIndex, charToRow, avgLineSpacing } from './search/RowIndex';
 export { computeHighlightRects } from './highlight/HighlightEngine';
 
-export type { SearchMatch } from './search/types';
+export type { SearchMatch, RowInfo, FindTextOptions } from './search/types';
 export type { Highlight, HighlightRect, ActiveMatchStyle } from './highlight/types';
 export type { PageTextIndex, PdflightTextItem, CharMapping } from './types';
 

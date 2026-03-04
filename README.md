@@ -354,9 +354,54 @@ pdflight builds a normalized text index from pdf.js's `getTextContent()` data:
 Unlike solutions that use DOM measurement, pdflight computes highlights from pdf.js's glyph-level position data:
 1. Computes bounding rectangles from each text item's `transform` matrix, with descender adjustment for characters like p, g, y
 2. Uses per-character widths from pdf.js font objects for precise partial-word highlighting
-3. Handles page rotation by transforming PDF-space rects to match the rotated viewport
+3. Decomposes rotation from the transform matrix (`atan2(b,a)`) to highlight text at any angle — word clouds, diagonal labels, rotated pages
 4. Merges adjacent rectangles on the same line for efficient DOM rendering
 5. Survives zoom/pan/resize/rotation by recomputing from source data — no DOM measurement needed
+
+![Rotated text highlights — words at different angles highlighted in different colors](https://raw.githubusercontent.com/pilotso11/pdflight/main/docs/screenshots/rotated-text-highlights.png)
+
+### Row-Addressable Text
+
+For server-side search or LLM fact-extraction use cases where results reference page and line numbers:
+
+```typescript
+// LLM returns: "Invoice total found on page 3, line 5"
+const matches = await viewer.findText('Invoice total', {
+  page: 3,
+  nearRow: 5,    // filter + sort by proximity to this row
+});
+viewer.addHighlight({ id: 'fact-1', ...matches[0], color: 'yellow' });
+
+// Control the proximity window (PDF units) — default is ±5 rows of text
+const nearby = await viewer.findText('total', {
+  page: 3,
+  nearRow: 5,
+  maxDistance: 50,       // tighter window
+});
+
+// Disable filtering, sort only
+const sorted = await viewer.findText('total', {
+  page: 3,
+  nearRow: 5,
+  maxDistance: Infinity, // return all matches, sorted by proximity
+});
+
+// Highlight an entire row
+const row = await viewer.getRow(3, 5);
+viewer.addHighlight({
+  id: 'row-5', page: row.page,
+  startChar: row.startChar, endChar: row.endChar,
+  color: 'rgba(0, 200, 255, 0.3)',
+});
+
+// Get all rows on a page
+const rows = await viewer.getRows(1);
+const count = await viewer.getRowCount(1);
+```
+
+Rows are computed by clustering text items by y-coordinate proximity — no native "line" concept exists in PDFs, so pdflight groups items within half a font-height of each other. Row numbering is 1-based from the top of the page.
+
+When `nearRow` is specified, `findText` filters results by **actual vertical distance** (y-coordinates), not row number. This matters for documents with images or charts — two adjacent row numbers can be far apart visually. The default `maxDistance` is `5 × avgLineSpacing`, which skips outlier gaps (like images) when computing spacing. Set `maxDistance: Infinity` to disable filtering and only sort by proximity.
 
 ## Why pdflight?
 

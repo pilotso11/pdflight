@@ -80,4 +80,71 @@ describe('buildPageTextIndex', () => {
     // The space at index 5 should map to item 0 (the actual previous non-empty item)
     expect(index.charMap[5]).toEqual({ itemIndex: 0, charOffset: 5 });
   });
+
+  it('handles NFC normalization of combining characters', () => {
+    // e + combining acute accent (2 code points) → é (1 code point in NFC)
+    const items = [makeItem('e\u0301')];
+    const index = buildPageTextIndex(1, items);
+    expect(index.normalizedText).toBe('\u00E9');
+  });
+
+  it('handles CJK text items', () => {
+    const items = [makeItem('你好'), makeItem('世界')];
+    const index = buildPageTextIndex(1, items);
+    // Same y-coordinate, so no space inserted between items on same line
+    expect(index.normalizedText).toBe('你好世界');
+  });
+
+  it('handles emoji (surrogate pairs)', () => {
+    const items = [makeItem('Hello 🌍')];
+    const index = buildPageTextIndex(1, items);
+    expect(index.normalizedText).toBe('Hello 🌍');
+  });
+
+  it('handles multiple consecutive empty items', () => {
+    const items = [
+      makeItem('Start'),
+      makeItem(''),
+      makeItem(''),
+      makeItem(''),
+      makeItem('End'),
+    ];
+    const index = buildPageTextIndex(1, items);
+    // All on same line (same y=500), so no space separator
+    expect(index.normalizedText).toBe('StartEnd');
+  });
+
+  it('handles items on same line without inserting space', () => {
+    // Items at same y position should concatenate directly
+    const items = [
+      makeItem('Hel', { transform: [12, 0, 0, 12, 100, 500] }),
+      makeItem('lo', { transform: [12, 0, 0, 12, 121, 500] }),
+    ];
+    const index = buildPageTextIndex(1, items);
+    expect(index.normalizedText).toBe('Hello');
+  });
+
+  it('inserts space between items on different lines', () => {
+    const items = [
+      makeItem('Hello', { transform: [12, 0, 0, 12, 100, 500] }),
+      makeItem('World', { transform: [12, 0, 0, 12, 100, 480] }),
+    ];
+    const index = buildPageTextIndex(1, items);
+    expect(index.normalizedText).toBe('Hello World');
+  });
+
+  it('charMap length matches normalizedText length', () => {
+    const items = [
+      makeItem('Hello', { transform: [12, 0, 0, 12, 100, 500] }),
+      makeItem('World', { transform: [12, 0, 0, 12, 100, 480] }),
+    ];
+    const index = buildPageTextIndex(1, items);
+    expect(index.charMap.length).toBe(index.normalizedText.length);
+  });
+
+  it('handles smart quotes normalization in index', () => {
+    const items = [makeItem('\u201CHello\u201D \u2018World\u2019')];
+    const index = buildPageTextIndex(1, items);
+    expect(index.normalizedText).toBe('"Hello" \'World\'');
+  });
 });

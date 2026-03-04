@@ -67,20 +67,87 @@ This index also handles:
 - **Subscripts and superscripts** — detected via y-offset differences between consecutive items
 - **Whitespace normalization** — collapsed for consistent matching
 
+## Handling italic and rotated text
+
+### Italic text
+
+PDFs encode italic text not by selecting an italic font face, but by applying a **skew transform** to the text matrix. Each text item's transform is a 6-element array `[scaleX, skewY, skewX, scaleY, tx, ty]` — the `skewX` component controls the italic slant (typically ~2.8 for standard italic).
+
+The naïve approach is to compute the text item's effective size from the full transform matrix using the Euclidean norm: `√(scaleX² + skewY²)` for horizontal scale and `√(scaleY² + skewX²)` for vertical. This is mathematically correct for determining the overall scaling of a vector through the transform — but it's wrong for positioning highlights, because **skew does not affect glyph advance widths**. An italic "m" leans to the right but occupies the same horizontal space as an upright "m".
+
+pdflight uses only the diagonal scale components to compute the width ratio:
+
+```
+scaleRatioX = |scaleX| / |scaleY|
+```
+
+This means italic text highlights are the correct width — they don't shrink by 3–4% as they would if skew were factored into the ratio. The descender depth (for characters like p, g, y) is similarly derived from `|scaleY|` alone, not from the full vertical norm.
+
+### Rotated text items (word clouds, labels)
+
+Some PDFs contain individually rotated text items — words placed at arbitrary angles, common in word clouds, infographics, and chart labels. Each item's transform matrix encodes the rotation: a standard horizontal word has transform `[12, 0, 0, 12, x, y]` (b=0, no rotation), while a word rotated 90° clockwise has `[0, -26, 26, 0, x, y]` (a=0, b≠0).
+
+The naïve approach — using only the diagonal elements `scaleX` and `scaleY` — produces zero-size rectangles when both are zero (pure rotation). pdflight decomposes the full transform matrix:
+
+```
+rotation = atan2(b, a)
+xScale   = √(a² + b²)    // scale along text direction
+yScale   = √(c² + d²)    // scale perpendicular to text
+```
+
+When `|rotation| < ε`, the code falls back to the diagonal-only extraction for backward compatibility with horizontal and italic text. For non-zero rotation, the decomposition produces a `RotatedRect` — a rectangle with a rotation angle in the text's local frame.
+
+The descender depth (for characters like p, g, y) extends perpendicular to the text baseline. For horizontal text that's straight down `(0, -1)`, but for rotated text it's `(sin θ, -cos θ)` in world coordinates — the unit vector `(0, -1)` rotated by angle θ.
+
+The CSS highlight div receives `transform-origin: 0 0` and `transform: rotate(Xdeg)`, with the rotation angle negated to convert from PDF's counterclockwise convention to CSS's clockwise convention. The pivot point (CSS top-left corner) is computed from the PDF bottom-left origin by walking along the height vector: `x_css = (x_pdf - height × sin θ) × scale`.
+
+![Rotated text highlights in a word cloud — 6 words highlighted in 5 colors across different angles](screenshots/rotated-text-highlights.png)
+
+### Rotated pages
+
+PDF page rotation is separate from the text content coordinate system. When a page is rotated 90°, 180°, or 270°, the text items from `getTextContent()` are still reported in the **original unrotated coordinate space**, but the rendered viewport uses the rotated coordinates.
+
+pdflight bridges this gap with `rotatePdfRect()`, which transforms each highlight rectangle from the original PDF space into the rotated viewport space:
+
+- **90° CW**: x-axis maps to rotated y-axis (inverted), y-axis maps to rotated x-axis, width and height swap
+- **180°**: both axes invert, no width/height swap
+- **270° CW**: inverse of 90°
+
+This rotation is applied after computing the rectangle from the text transform and before converting from PDF coordinates (origin bottom-left, y-up) to CSS coordinates (origin top-left, y-down). The result: highlights remain accurate regardless of page rotation, and a full 360° round-trip (four successive 90° rotations) returns to the original rectangle.
+
+When page rotation and item-level rotation combine (e.g. a word cloud on a rotated page), the page rotation transforms only the origin point of each `RotatedRect`, and the page rotation angle is added to the item's rotation. Width and height stay in the rect's local frame — unlike axis-aligned rects, which swap width and height at 90° and 270°.
+
+## Row-addressable text
+
+PDFs have no native "line" or "row" concept — text items are positioned at arbitrary coordinates. But external systems often reference text by location: an LLM returns "Invoice total on page 3, line 5", or a search engine returns page-level results that need to be anchored to a specific region.
+
+pdflight bridges this gap with a row index that clusters text items into visual rows by y-coordinate proximity (within half a font-height of each other). Consumers can search with location hints:
+
+```typescript
+const matches = await viewer.findText('Invoice total', {
+  page: 3,
+  nearRow: 5,
+});
+```
+
+Results are filtered and sorted by **actual vertical distance** (y-coordinates), not row number. This distinction matters for documents with embedded images or charts — two consecutively numbered rows can be visually far apart if an image sits between them. The default proximity window is ±5 rows of normal text spacing, computed by averaging line gaps while excluding outliers like image breaks.
+
+No other open-source PDF viewer library provides row-level text addressing. The commercial SDKs (Nutrient, Apryse) expose line-level text extraction APIs — Nutrient's [`textLinesForPageIndex`](https://www.nutrient.io/api/web/PSPDFKit.TextLine.html) and Apryse's [`TextExtractor.Line`](https://sdk.apryse.com/api/PDFTronSDK/dotnet/pdftron.PDF.TextExtractor.Line.html) — but search and line extraction are separate operations that the consumer must wire together. pdflight combines both into a single `findText()` call with proximity filtering.
+
 ## Comparison
 
-| | Positioning method | Cross-item search | Hyphenation | Sub/superscripts | Framework | License |
-|---|---|---|---|---|---|---|
-| **pdflight** | `getTextContent()` transform matrices + per-char font widths | Yes (normalized index) | Yes | Yes | Agnostic | MIT |
-| **pdf.js built-in** | CSS class on text layer spans | Internal only (not exposed) | Yes (since 2022) | No | Agnostic | Apache 2.0 |
-| **react-pdf-highlighter** | `getClientRects()` on DOM selection | No search engine | No | No | React | MIT |
-| **@react-pdf-viewer/highlight** | Percentage rects from DOM selection | No search engine | No | No | React | MIT |
-| **ngx-extended-pdf-viewer** | Delegates to pdf.js text layer | Via pdf.js only | Inherited | No | Angular | MIT |
-| **vue-pdf-embed / VuePDF** | Delegates to pdf.js text layer | Via pdf.js only | Inherited | No | Vue 3 | MIT |
-| **Nutrient (PSPDFKit)** | Proprietary WASM engine, PDF-native coords | Yes | Yes | Proprietary | Agnostic | Commercial |
-| **Apryse (PDFTron)** | Proprietary WASM engine, PDF-native coords | Yes | Yes | Proprietary | Agnostic | Commercial |
+| | Positioning method | Cross-item search | Row search | Hyphenation | Sub/superscripts | Framework | License |
+|---|---|---|---|---|---|---|---|
+| **pdflight** | `getTextContent()` transform matrices + per-char font widths | Yes (normalized index) | Yes (y-proximity rows) | Yes | Yes | Agnostic | MIT |
+| **pdf.js built-in** | CSS class on text layer spans | Internal only (not exposed) | No | Yes (since 2022) | No | Agnostic | Apache 2.0 |
+| **react-pdf-highlighter** | `getClientRects()` on DOM selection | No search engine | No | No | No | React | MIT |
+| **@react-pdf-viewer/highlight** | Percentage rects from DOM selection | No search engine | No | No | No | React | MIT |
+| **ngx-extended-pdf-viewer** | Delegates to pdf.js text layer | Via pdf.js only | No | Inherited | No | Angular | MIT |
+| **vue-pdf-embed / VuePDF** | Delegates to pdf.js text layer | Via pdf.js only | No | Inherited | No | Vue 3 | MIT |
+| **Nutrient (PSPDFKit)** | Proprietary WASM engine, PDF-native coords | Yes | Yes (line API, separate from search) | Yes | Proprietary | Agnostic | Commercial |
+| **Apryse (PDFTron)** | Proprietary WASM engine, PDF-native coords | Yes | Yes (line API, separate from search) | Yes | Proprietary | Agnostic | Commercial |
 
 ## The short version
 
-- **vs. open-source alternatives**: pdflight is the only open-source library that computes highlight geometry from glyph-level data rather than DOM measurement. It's also the only one with a normalized text index that enables search across text fragmentation boundaries, and it works with any framework.
-- **vs. commercial SDKs** (Nutrient, Apryse): these solve the same accuracy problem by owning the entire PDF rendering engine (WASM-based, not pdf.js). They're more feature-complete but cost significant licensing fees. pdflight builds on top of pdf.js and is free.
+- **vs. open-source alternatives**: pdflight is the only open-source library that computes highlight geometry from glyph-level data rather than DOM measurement. It's also the only one with a normalized text index that enables search across text fragmentation boundaries, row-addressable text for LLM/search integration, and it works with any framework.
+- **vs. commercial SDKs** (Nutrient, Apryse): these solve the same accuracy problem by owning the entire PDF rendering engine (WASM-based, not pdf.js). They expose line-level text extraction APIs, but search and line extraction are separate operations — pdflight's `findText()` combines both with proximity filtering in a single call. They're more feature-complete but cost significant licensing fees. pdflight builds on top of pdf.js and is free.

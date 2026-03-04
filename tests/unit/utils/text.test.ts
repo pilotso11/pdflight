@@ -60,4 +60,51 @@ describe('normalizeText', () => {
     // e + combining acute = é in NFC
     expect(normalizeText('e\u0301')).toBe('\u00E9');
   });
+
+  it('normalizes NFC where char count changes', () => {
+    // Two separate code points (e + combining acute) → single code point (é)
+    const input = 'e\u0301'; // 2 chars
+    const result = normalizeText(input);
+    expect(result).toBe('\u00E9'); // 1 char
+    expect(result.length).toBe(1);
+    expect(input.length).toBe(2);
+  });
+
+  it('handles multiple combining characters', () => {
+    // a + combining ring above + combining acute → normalized form
+    const input = 'a\u030A\u0301';
+    const result = normalizeText(input);
+    // NFC should compose this
+    expect(result.length).toBeLessThanOrEqual(input.length);
+  });
+
+  it('preserves emoji (surrogate pairs)', () => {
+    // Emoji are already NFC-safe, should pass through unchanged
+    expect(normalizeText('Hello 🌍 World')).toBe('Hello 🌍 World');
+  });
+
+  it('handles emoji with variation selectors', () => {
+    // Heart with text variation selector
+    expect(normalizeText('❤\uFE0F')).toBe('❤\uFE0F');
+  });
+
+  it('handles CJK characters', () => {
+    expect(normalizeText('你好世界')).toBe('你好世界');
+  });
+
+  it('handles mixed CJK and Latin', () => {
+    expect(normalizeText('Hello 世界 test')).toBe('Hello 世界 test');
+  });
+
+  it('handles empty string', () => {
+    expect(normalizeText('')).toBe('');
+  });
+
+  it('handles string with only whitespace', () => {
+    expect(normalizeText('   \n\t   ')).toBe('');
+  });
+
+  it('handles string with only hyphens', () => {
+    expect(normalizeText('---')).toBe('---');
+  });
 });

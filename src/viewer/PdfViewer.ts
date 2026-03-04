@@ -4,11 +4,14 @@ import type { PageTextIndex } from '../types';
 import type { SearchMatch } from '../search/types';
 import type { Highlight, ActiveMatchStyle } from '../highlight/types';
 import { searchPages } from '../search/SearchEngine';
+import { buildRowIndex, charToRow, avgLineSpacing } from '../search/RowIndex';
+import type { RowInfo, FindTextOptions } from '../search/types';
 import { computeHighlightRects } from '../highlight/HighlightEngine';
 import { HighlightLayer } from '../highlight/HighlightLayer';
 import { PageRenderer } from './PageRenderer';
 import { Sidebar, resolveSidebarConfig, type PageHighlightInfo, type SidebarConfig } from './Sidebar';
 import { ViewerToolbar, resolveToolbarConfig, type ToolbarConfig } from './ViewerToolbar';
+import { computeMobileDefaults } from './mobileDefaults';
 
 export interface PdfViewerOptions {
   initialPage?: number;
@@ -86,6 +89,9 @@ export class PdfViewer {
     };
     this.highlightLayer.setTooltipContent(this.options.tooltipContent);
     this.sidebarConfig = resolveSidebarConfig(options.sidebar);
+
+    // Apply mobile-friendly defaults for narrow containers (only when consumer didn't explicitly set)
+    this.applyMobileDefaults(options);
 
     // Observe container resizes to reapply fit mode
     this.resizeObserver = new ResizeObserver(() => {
@@ -330,6 +336,98 @@ export class PdfViewer {
     return this.searchMatches.length;
   }
 
+  /** Get all visual text rows on a page, ordered top-to-bottom. */
+  async getRows(page: number): Promise<RowInfo[]> {
+    const textIndex = await this.ensureTextIndexForPage(page);
+    if (!textIndex) return [];
+    return buildRowIndex(textIndex);
+  }
+
+  /** Get a specific row (1-based from top). Returns null if row doesn't exist. */
+  async getRow(page: number, row: number): Promise<RowInfo | null> {
+    const rows = await this.getRows(page);
+    return rows.find(r => r.row === row) ?? null;
+  }
+
+  /** Get the number of visual text rows on a page. */
+  async getRowCount(page: number): Promise<number> {
+    const rows = await this.getRows(page);
+    return rows.length;
+  }
+
+  /**
+   * Search for text with optional location constraints.
+   *
+   * Unlike search(), this does not update match navigation state (nextMatch/prevMatch).
+   * It's a pure query that returns results for the consumer to highlight manually.
+   *
+   * When opts.page is specified, results are limited to that page.
+   * When opts.nearRow is specified (requires opts.page), results are sorted by
+   * proximity to that row number (closest first).
+   */
+  async findText(text: string, opts?: FindTextOptions): Promise<SearchMatch[]> {
+    if (!this.pdfDocument || !text) return [];
+
+    await this.ensureAllTextIndices();
+
+    let indices: PageTextIndex[];
+    if (opts?.page) {
+      const pageIndex = this.textIndices.get(opts.page);
+      if (!pageIndex) return [];
+      indices = [pageIndex];
+    } else {
+      indices = Array.from(this.textIndices.values()).sort(
+        (a, b) => a.pageNumber - b.pageNumber,
+      );
+    }
+
+    let results = searchPages(indices, text);
+
+    // Sort and filter by proximity to nearRow if specified
+    if (opts?.nearRow) {
+      // nearRow requires page — without a page we can't build a row index
+      if (!opts.page) return [];
+
+      const pageIndex = this.textIndices.get(opts.page);
+      if (!pageIndex) return [];
+
+      const rows = buildRowIndex(pageIndex);
+      const targetRow = rows.find((r) => r.row === opts.nearRow);
+
+      // If the target row doesn't exist, return empty — no valid anchor point
+      if (!targetRow) return [];
+
+      const targetY = targetRow.y;
+
+      // Compute max y-distance: explicit maxDistance, or default ±5 rows
+      const maxDist = opts.maxDistance ?? avgLineSpacing(rows) * 5;
+
+      // Map each result to its row's y-coordinate for distance calc
+      const rowYForChar = (startChar: number): number | undefined => {
+        const rowNum = charToRow(rows, startChar);
+        return rows.find((r) => r.row === rowNum)?.y;
+      };
+
+      // Filter by y-distance, then sort by proximity
+      results = results.filter((m) => {
+        const my = rowYForChar(m.startChar);
+        return my !== undefined && Math.abs(my - targetY) <= maxDist;
+      });
+
+      results.sort((a, b) => {
+        const yA = rowYForChar(a.startChar) ?? targetY;
+        const yB = rowYForChar(b.startChar) ?? targetY;
+        return Math.abs(yA - targetY) - Math.abs(yB - targetY);
+      });
+    }
+
+    if (opts?.maxResults && results.length > opts.maxResults) {
+      results = results.slice(0, opts.maxResults);
+    }
+
+    return results;
+  }
+
   /** Add a highlight. */
   addHighlight(highlight: Highlight): void {
     this.highlights.set(highlight.id, highlight);
@@ -436,6 +534,18 @@ export class PdfViewer {
     this.currentMatchIndex = -1;
     this.eventListeners.clear();
     this.pdfDocument = null;
+  }
+
+  private applyMobileDefaults(options: PdfViewerOptions): void {
+    const overrides = computeMobileDefaults(this.container.clientWidth, options);
+    if (overrides.fitMode) {
+      this.fitMode = overrides.fitMode;
+      this.options.fitMode = overrides.fitMode;
+    }
+    if (overrides.sidebar === false) {
+      this.sidebarConfig = null;
+      this.options.sidebar = false;
+    }
   }
 
   private activateCurrentMatch(): SearchMatch {
@@ -554,6 +664,11 @@ export class PdfViewer {
         }
       }
     }
+  }
+
+  private async ensureTextIndexForPage(page: number): Promise<PageTextIndex | null> {
+    await this.ensureAllTextIndices();
+    return this.textIndices.get(page) ?? null;
   }
 
   private renderHighlights(): void {
