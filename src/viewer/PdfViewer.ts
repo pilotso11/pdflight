@@ -537,7 +537,9 @@ export class PdfViewer {
   }
 
   private applyMobileDefaults(options: PdfViewerOptions): void {
-    const overrides = computeMobileDefaults(this.container.clientWidth, options);
+    const width = this.container.clientWidth;
+    if (!width) return;
+    const overrides = computeMobileDefaults(width, options);
     if (overrides.fitMode) {
       this.fitMode = overrides.fitMode;
       this.options.fitMode = overrides.fitMode;

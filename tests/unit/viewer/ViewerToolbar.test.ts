@@ -207,8 +207,8 @@ describe('ViewerToolbar', () => {
 
     // Verify the injected styles include flex-wrap so the toolbar
     // wraps to two lines on narrow (mobile) viewports
-    const styleEl = document.querySelector('style');
-    const styles = styleEl?.textContent ?? '';
+    const styleEls = document.querySelectorAll('style');
+    const styles = Array.from(styleEls).map(el => el.textContent ?? '').join('');
     expect(styles).toContain('flex-wrap');
   });
 });

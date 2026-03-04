@@ -1,8 +1,20 @@
 # Why pdflight?
 
-We surveyed every JavaScript PDF highlighting library we could find — open-source and commercial. The commercial SDKs (PSPDFKit, Apryse) solve highlight accuracy by owning the entire rendering engine. Every open-source alternative positions highlights by measuring the DOM text layer that pdf.js renders on top of the canvas. This works *most of the time*, but breaks in ways that are hard to debug and impossible to fix from the outside.
+I'm using LLMs now to do deep research on text documents. A few years ago, this would have been much more challenging. But how do we fact-check? Asking an LLM to provide citations into the document in the prompt is easy: the user can fact-check the sources within the document. Building a UI that allows users to view and navigate between these citations, and highlights them, seems like an obvious choice.
 
-pdflight is the only non-commercial JavaScript library that produces accurate text highlights. It takes a different approach entirely.
+```text
+Cite every claim with an inline reference [page, line, quote].
+Do not cite any facts without a source.
+...
+```
+
+Attempting to build this capability in a UI we ran into challenges. The open source PDF tools would put highlights on the page, but often only near the actual text.  The more complex the formatting of the page, the worse results we found. 
+
+I surveyed every JavaScript PDF highlighting library I could find — open-source and commercial. The commercial SDKs (PSPDFKit, Apryse) solve highlight accuracy by owning the entire rendering engine. Every open-source alternative positions highlights by measuring the DOM text layer that pdf.js renders on top of the canvas. This works *most of the time*, but breaks in ways that are hard to debug and impossible to fix from the outside.  
+
+I don't want to be tied to a commercial solution. I'm not an expert at PDF, but working with Claude to investigate the issues, it seemed this might be doable with some LLM help and a great deal of testing. This felt like an opportunity to help the community out with a better solution to PDF highlighting and searching. 
+
+The result is pdflight, the only non-commercial JavaScript library that produces accurate text highlights. It takes a different approach entirely.
 
 ## The problem with DOM-based highlighting
 
@@ -23,7 +35,12 @@ Here's a real example — searching for "odio" and highlighting with DOM-measure
 
 ### Errors compound
 
-The drift isn't a constant offset you can correct for. Each text span's error depends on the specific characters it contains, the font metrics the browser resolved, and the `scaleX` transform pdf.js computed. Across a line of text, these per-span errors accumulate: a 1px drift on the first span shifts every subsequent span's starting position. By the end of a long line — or across multiple lines in a dense paragraph — highlights can land several pixels away from the actual text. At higher zoom levels the errors scale proportionally, making the misalignment even more obvious. The result is highlights that look roughly right at a glance but fall apart under closer inspection, especially on documents with mixed fonts, small text, or tight line spacing.
+The drift isn't a constant offset you can correct for. Each text span's error depends on the specific characters it contains, the font metrics the browser resolved, and the `scaleX` transform pdf.js computed. Across a line of text, these per-span errors accumulate: a 1px drift on the first span shifts every subsequent span's starting position. 
+
+Proportional fonts, italics, subscripts and superscripts, mixed fonts on a row all compound. Because fonts change across the document, easy assumptions about line heights and font widths are traps that must be avoided.
+
+By the end of a long line — or across multiple lines in a dense paragraph — highlights can land several pixels away from the actual text. At higher zoom levels the errors scale proportionally, making the misalignment even more obvious. The result is highlights that look roughly right at a glance but fall apart under closer inspection, especially on documents with mixed fonts, small text, or tight line spacing.
+
 
 ## How pdflight positions highlights
 
@@ -82,6 +99,8 @@ scaleRatioX = |scaleX| / |scaleY|
 ```
 
 This means italic text highlights are the correct width — they don't shrink by 3–4% as they would if skew were factored into the ratio. The descender depth (for characters like p, g, y) is similarly derived from `|scaleY|` alone, not from the full vertical norm.
+
+![Italic text highlights — "Lorem ipsum", "adipiscing", and "odio" precisely covered with no shrinkage or drift](screenshots/odio-highlight-accurate.png)
 
 ### Rotated text items (word clouds, labels)
 
