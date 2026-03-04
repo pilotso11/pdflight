@@ -28,6 +28,7 @@
     "lint": "eslint src/ tests/",
     "lint:fix": "eslint src/ tests/ --fix",
     "typecheck": "tsc --noEmit",
+    "build:demo": "vite build --config vite.config.demo.ts",
     "preview": "vite build --config vite.config.demo.ts && vite preview --config vite.config.demo.ts"
   },
   "repository": {

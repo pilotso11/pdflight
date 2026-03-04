@@ -70,7 +70,7 @@ Use pdflight directly in HTML without any build tools. The URLs below always poi
 
 Versioned URLs are also available (e.g. `pdflight-0.1.0.iife.js`). See the [releases page](https://github.com/pilotso11/pdflight/releases) for version history and CDN URLs.
 
-See the [live example](https://pilotso11.github.io/pdflight/example.html).
+See the [live demo](https://pilotso11.github.io/pdflight/).
 
 ## Demo
 

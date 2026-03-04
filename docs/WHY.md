@@ -29,6 +29,10 @@ The text layer spans are positioned using `canvas.measureText()` to compute a `s
 
 Every library that measures DOM elements to position highlights — `getClientRects()`, `getBoundingClientRect()`, or CSS class injection on text layer spans — inherits this drift.
 
+Here's a real example — searching for "odio" and highlighting with DOM-measured rectangles. The first highlight bleeds well below the text baseline; the second is pushed to the far right of the line, barely covering the target word:
+
+![DOM-based highlight drift on the word "odio"](screenshots/dom-highlight-drift.png)
+
 ### Errors compound
 
 The drift isn't a constant offset you can correct for. Each text span's error depends on the specific characters it contains, the font metrics the browser resolved, and the `scaleX` transform pdf.js computed. Across a line of text, these per-span errors accumulate: a 1px drift on the first span shifts every subsequent span's starting position. 

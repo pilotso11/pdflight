@@ -21,7 +21,15 @@ body {
   flex-wrap: wrap;
 }
 
-.toolbar h1 { margin: 0; font-size: 18px; }
+.toolbar h1 { margin: 0; font-size: 18px; flex: 1; }
+
+.github-link {
+  color: #555;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.github-link:hover { color: #0969da; text-decoration: underline; }
 
 .toolbar-section {
   display: flex;

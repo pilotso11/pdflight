@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DOM-Based Highlighting (Intentionally Broken)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #525659;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px;
+      gap: 32px;
+    }
+    h1 {
+      color: #fff;
+      margin-bottom: 0;
+      font-size: 22px;
+    }
+    .subtitle {
+      color: #aaa;
+      font-size: 14px;
+    }
+    .case {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .case-label {
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+    }
+    .case-label em {
+      color: #ffd700;
+      font-style: normal;
+    }
+    .page-container {
+      position: relative;
+      background: white;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    }
+    .page-container canvas {
+      display: block;
+    }
+    .textLayer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      overflow: hidden;
+      opacity: 0.25;
+      line-height: 1.0;
+    }
+    .textLayer span {
+      position: absolute;
+      white-space: pre;
+      color: transparent;
+      transform-origin: 0% 0%;
+    }
+    .highlight-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+    }
+    .dom-highlight {
+      position: absolute;
+      background: rgba(255, 255, 0, 0.45);
+      mix-blend-mode: multiply;
+    }
+    .legend {
+      color: #ccc;
+      font-size: 13px;
+      max-width: 700px;
+      text-align: center;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div>
+    <h1>DOM-Based PDF Highlighting</h1>
+    <p class="subtitle">Highlights positioned from text layer DOM measurements</p>
+  </div>
+  <div id="cases"></div>
+  <p class="legend">
+    Yellow highlights are positioned by measuring <code>&lt;span&gt;</code> elements in the pdf.js text layer.
+    Notice how the highlights drift from the actual rendered text on the canvas &mdash;
+    shifted horizontally, wrong width, or not covering the full word.
+  </p>
+
+  <script type="module">
+    import * as pdfjsLib from '../node_modules/pdfjs-dist/build/pdf.mjs';
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      '../node_modules/pdfjs-dist/build/pdf.worker.mjs';
+
+    const SCALE = 2.0;
+
+    const CASES = [
+      {
+        pdf: '../tests/fixtures/pdf-sample2.pdf',
+        page: 1,
+        term: 'bookmarks',
+        label: 'bookmarks — misaligned across embedded font',
+      },
+      {
+        pdf: '../tests/fixtures/pdf-sample2.pdf',
+        page: 1,
+        term: 'Accelio',
+        label: 'Accelio — highlight offset from canvas text',
+      },
+      {
+        pdf: '../tests/fixtures/file-sample_150kB.pdf',
+        page: 1,
+        term: 'odio',
+        label: 'odio — highlight skewed from canvas text',
+      },
+      {
+        pdf: '../tests/fixtures/file-sample_150kB.pdf',
+        page: 1,
+        term: 'lorem',
+        label: 'lorem — highlight drifts from actual glyphs',
+      },
+      {
+        pdf: './prospectus.pdf',
+        page: 3,
+        term: 'bank',
+        label: 'bank — highlight drift on financial document',
+      },
+    ];
+
+    const casesContainer = document.getElementById('cases');
+
+    // Cache loaded PDFs
+    const pdfCache = {};
+
+    async function loadPdf(url) {
+      if (!pdfCache[url]) {
+        pdfCache[url] = await pdfjsLib.getDocument(url).promise;
+      }
+      return pdfCache[url];
+    }
+
+    function createLabel(text, term) {
+      // Build label with the search term emphasized
+      const label = document.createElement('div');
+      label.className = 'case-label';
+      const em = document.createElement('em');
+      em.textContent = '"' + term + '"';
+      const rest = text.substring(term.length);
+      label.appendChild(em);
+      label.appendChild(document.createTextNode(' — ' + rest.replace(/^ — /, '')));
+      return label;
+    }
+
+    async function renderCase(caseConfig) {
+      const { pdf: pdfUrl, page: pageNum, term, label } = caseConfig;
+
+      const caseDiv = document.createElement('div');
+      caseDiv.className = 'case';
+
+      // Parse label: term is before the dash, description after
+      const parts = label.split(' — ');
+      const labelEl = createLabel(label, term);
+      caseDiv.appendChild(labelEl);
+
+      const container = document.createElement('div');
+      container.className = 'page-container';
+      caseDiv.appendChild(container);
+      casesContainer.appendChild(caseDiv);
+
+      let pdf;
+      try {
+        pdf = await loadPdf(pdfUrl);
+      } catch (e) {
+        labelEl.textContent += ' (PDF not found, skipping)';
+        labelEl.style.color = '#f66';
+        return;
+      }
+
+      const page = await pdf.getPage(pageNum);
+      const viewport = page.getViewport({ scale: SCALE });
+
+      // Canvas
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      container.style.width = viewport.width + 'px';
+      container.style.height = viewport.height + 'px';
+      container.appendChild(canvas);
+
+      const ctx = canvas.getContext('2d');
+      await page.render({ canvasContext: ctx, viewport }).promise;
+
+      // Text layer
+      const textContent = await page.getTextContent();
+      const textLayerDiv = document.createElement('div');
+      textLayerDiv.className = 'textLayer';
+      container.appendChild(textLayerDiv);
+
+      for (const item of textContent.items) {
+        if (!item.str) continue;
+        const span = document.createElement('span');
+        span.textContent = item.str;
+
+        const tx = item.transform;
+        const fontSize = Math.hypot(tx[0], tx[1]);
+        const left = tx[4] * SCALE;
+        const top = (viewport.height / SCALE - tx[5]) * SCALE - fontSize * SCALE;
+
+        span.style.left = left + 'px';
+        span.style.top = top + 'px';
+        span.style.fontSize = fontSize * SCALE + 'px';
+        span.style.fontFamily = item.fontName || 'sans-serif';
+
+        textLayerDiv.appendChild(span);
+      }
+
+      // Highlight layer
+      const highlightLayer = document.createElement('div');
+      highlightLayer.className = 'highlight-layer';
+      container.insertBefore(highlightLayer, textLayerDiv);
+
+      // DOM-based highlighting
+      const spans = textLayerDiv.querySelectorAll('span');
+      const termLower = term.toLowerCase();
+
+      for (const span of spans) {
+        const text = span.textContent.toLowerCase();
+        let idx = 0;
+        while ((idx = text.indexOf(termLower, idx)) !== -1) {
+          const range = document.createRange();
+          const textNode = span.firstChild;
+          range.setStart(textNode, idx);
+          range.setEnd(textNode, idx + termLower.length);
+
+          const rects = range.getClientRects();
+          const containerRect = container.getBoundingClientRect();
+
+          for (const rect of rects) {
+            const div = document.createElement('div');
+            div.className = 'dom-highlight';
+            div.style.left = (rect.left - containerRect.left) + 'px';
+            div.style.top = (rect.top - containerRect.top) + 'px';
+            div.style.width = rect.width + 'px';
+            div.style.height = rect.height + 'px';
+            highlightLayer.appendChild(div);
+          }
+
+          idx += termLower.length;
+        }
+      }
+    }
+
+    async function main() {
+      for (const c of CASES) {
+        await renderCase(c);
+      }
+    }
+
+    main().catch(err => {
+      console.error('Failed:', err);
+    });
+  </script>
+</body>
+</html>
