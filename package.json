@@ -46,12 +46,12 @@
     "@vitest/ui": "^4.0.18",
     "ajv": "^8.18.0",
     "eslint": "^10.0.2",
-    "jsdom": "^28.1.0",
+    "jsdom": "^29.1.1",
     "pdf-lib": "^1.17.1",
     "prismjs": "^1.30.0",
-    "typescript": "^5.9.3",
-    "vite": "^7.3.1",
-    "vite-plugin-dts": "^4.5.4",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.14",
+    "vite-plugin-dts": "^5.0.1",
     "vitest": "^4.0.18"
   },
   "dependencies": {
