@@ -128,7 +128,7 @@ export class PdfViewer {
 
       if (typeof source === 'string') {
         console.log('[PdfViewer] Loading from URL:', source);
-        loadingTask = pdfjs.getDocument(source);
+        loadingTask = pdfjs.getDocument({ url: source });
       } else {
         console.log('[PdfViewer] Loading from data');
         loadingTask = pdfjs.getDocument({ data: source });

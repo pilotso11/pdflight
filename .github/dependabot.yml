@@ -1,11 +1,32 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
-# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+# Consolidate updates into fewer PRs:
+# - all minor/patch updates (dev + prod) land together in one weekly PR
+# - major updates stay as individual PRs (breaking-change risk)
+# - TypeScript 7 majors are ignored until typescript-eslint supports it
+#   (peer range is currently >=4.8.4 <6.1.0)
 
 version: 2
 updates:
-  - package-ecosystem: "npm" # See documentation for possible values
-    directory: "/" # Location of package manifests
+  - package-ecosystem: "npm"
+    directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # TypeScript 7 is the Go-native rewrite; @typescript-eslint cannot parse
+      # with it yet (crashes in typescript-estree). Remove once its peer range
+      # includes 7.x.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      all-actions:
+        patterns: ["*"]
