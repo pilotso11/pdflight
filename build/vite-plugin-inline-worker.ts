@@ -42,7 +42,10 @@ export function inlineWorkerPlugin(): Plugin {
       ].join('\n');
 
       return {
-        code: code.replace(workerSetupPattern, replacement),
+        // Replacement function (not string) so `$&`, `$'`, `` $` `` etc. in the
+        // escaped worker source are treated literally instead of as replace()
+        // replacement patterns — pdf.worker.mjs v6 contains `$&` sequences.
+        code: code.replace(workerSetupPattern, () => replacement),
         map: null,
       };
     },
